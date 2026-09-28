@@ -18,3 +18,9 @@ Global concurrency was attempted and found unsafe: GitHub cancelled a pending is
 
 ## Remaining limits
 Same-issue repeated pickup must be separately triggered and checked. Duplicate detection is canonical issue number, not an atomic reservation against arbitrary simultaneous workers; this workflow's single GitHub Actions allowlisted task has no external side effect. Closing during a non-interruptible real task cannot roll back actions; the 15-second test proves cooperative cancellation only. GitHub issue edit can trigger pickup and is not authorization to change scope: changing order body after claim is a risk; production workers require immutable signed/commit-pinned orders and stronger authorization. Cross-chat ChatGPT invocation unproven. No arbitrary project execution. No production release mechanism. Protected projects and landing untouched.
+
+## Final verification addendum
+- #6 CYB-TEST-005 completed with receipt, run 36377865618, source 562bdd58.
+- #3 CYB-TEST-003 issue title edited to trigger a second pickup; run 36377963667 succeeded with log `TERMINAL_RECEIPT_SKIP CYB-TEST-003`; the issue retains exactly one COMPLETE receipt. Repeated pickup PROVEN idempotent for this isolated test.
+- #7 duplicate ID BLOCKED; #5 cancellation before pickup and #8 cancellation during 15-second active test both PROVEN.
+- Caveat: no general atomic exactly-once execution guarantee, no forced interruption or rollback, and no cross-chat invocation. This is a test-only GitHub Actions worker.
