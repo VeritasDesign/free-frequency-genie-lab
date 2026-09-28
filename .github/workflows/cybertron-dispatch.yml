@@ -1,7 +1,7 @@
 name: Cybertron isolated work-order worker
 on:
   issues:
-    types: [opened]
+    types: [opened, edited, closed]
 permissions:
   issues: write
   contents: read
@@ -10,43 +10,56 @@ jobs:
     if: startsWith(github.event.issue.title, '[CYBERTRON TEST] ')
     runs-on: ubuntu-latest
     concurrency:
-      group: cybertron-order-${{ github.event.issue.number }}
+      group: cybertron-isolated-global
       cancel-in-progress: false
     steps:
-      - name: Claim and execute allowlisted isolated test
+      - name: Validate, deduplicate, and execute isolated test
         uses: actions/github-script@v7
         with:
           script: |
-            const owner = context.repo.owner, repo = context.repo.repo;
-            const issue_number = context.issue.number;
-            const issue = context.payload.issue;
-            const marker = '<!-- CYBERTRON-WO-V0.1';
-            const end = ' -->';
-            const start = issue.body?.indexOf(marker) ?? -1;
-            const finish = start >= 0 ? issue.body.indexOf(end, start) : -1;
-            if (start < 0 || finish < 0) { core.setFailed('BLOCKED: missing order payload'); return; }
-            let order;
-            try { order = JSON.parse(issue.body.slice(start + marker.length, finish)); }
-            catch (e) { core.setFailed('BLOCKED: invalid JSON payload'); return; }
-            const allowed = order.version === '0.1' && order.worker === 'github-actions-isolated' &&
-              order.task_type === 'harmless-receipt-test' && order.target === 'free-frequency-genie-lab/dispatch' &&
-              order.scope === 'issue-comments-only' && order.production_release === false &&
-              order.acceptance === 'worker claims, records receipt, repeat pickup is idempotent';
-            const {data: comments} = await github.rest.issues.listComments({owner,repo,issue_number,per_page:100});
-            const prefix = 'CYBERTRON_RECEIPT_V0.1 ';
-            const prior = comments.find(c => c.body?.startsWith(prefix) && c.body.includes('"id":"' + order.id + '"'));
-            if (prior) { core.info('DUPLICATE_PICKUP_SKIPPED receipt=' + prior.html_url); return; }
-            const post = async (body) => github.rest.issues.createComment({owner,repo,issue_number,body});
-            if (!allowed) {
-              await post(prefix + JSON.stringify({id:order.id||'UNKNOWN',status:'BLOCKED',worker:'github-actions-isolated',blocker:'Order is not the exact allowlisted isolated test; no task executed',run:context.runId}));
-              core.setFailed('BLOCKED: outside authorized test scope');
-              return;
+            const owner=context.repo.owner, repo=context.repo.repo, issue_number=context.issue.number;
+            const prefix='CYBERTRON_RECEIPT_V0.1 ', claim='CYBERTRON_CLAIM_V0.1 ';
+            const marker='<!-- CYBERTRON-WO-V0.1', end=' -->';
+            const post=async data=>github.rest.issues.createComment({owner,repo,issue_number,body:prefix+JSON.stringify(data)});
+            const current=async()=> (await github.rest.issues.get({owner,repo,issue_number})).data;
+            const parse=body=>{const a=body?.indexOf(marker)??-1,b=a<0?-1:body.indexOf(end,a);if(a<0||b<0)return null;try{return JSON.parse(body.slice(a+marker.length,b))}catch{return null}};
+            const order=parse((await current()).body);
+            if(!order || typeof order.id!=='string' || !/^CYB-TEST-[0-9]{3,6}$/.test(order.id)){
+              await post({id:'UNKNOWN',status:'BLOCKED',blocker:'Missing or invalid order ID/payload',run:context.runId});core.setFailed('BLOCKED invalid order');return;
             }
-            await post('CYBERTRON_CLAIM_V0.1 ' + JSON.stringify({id:order.id,status:'CLAIMED',worker:'github-actions-isolated',run:context.runId}));
-            await post('CYBERTRON_STATUS_V0.1 ' + JSON.stringify({id:order.id,status:'RUNNING',run:context.runId}));
-            const receipt = {id:order.id,status:'COMPLETE',worker:'github-actions-isolated',task_type:order.task_type,
-              result:'allowlisted runner executed and posted receipt; no project files modified',
-              test:'PASS: payload and scope validated; claim and completion posted',
-              source_commit:context.sha,run:context.runId,production_release:false};
-            const response = await post(prefix + JSON.stringify(receipt));
-            core.info('WORKER_COMPLETE receipt=' + response.data.html_url);
+            const id=order.id;
+            const comments=await github.paginate(github.rest.issues.listComments,{owner,repo,issue_number,per_page:100});
+            const receipts=comments.filter(c=>c.body?.startsWith(prefix)).map(c=>{try{return JSON.parse(c.body.slice(prefix.length))}catch{return {}}});
+            if(receipts.some(r=>r.id===id && ['COMPLETE','CANCELLED','BLOCKED'].includes(r.status))){
+              core.info('TERMINAL_RECEIPT_SKIP '+id);return;
+            }
+            const live=await current();
+            if(live.state!=='open'){
+              await post({id,status:'CANCELLED',blocker:'Issue closed before completion',run:context.runId});core.info('CANCELLED '+id);return;
+            }
+            const allowed=order.version==='0.1' && order.worker==='github-actions-isolated' &&
+              order.task_type==='harmless-receipt-test' && order.target==='free-frequency-genie-lab/dispatch' &&
+              order.scope==='issue-comments-only' && order.production_release===false &&
+              order.acceptance==='worker claims, records receipt, repeat pickup is idempotent' &&
+              (order.test_delay_seconds===undefined || order.test_delay_seconds===15);
+            if(!allowed){
+              await post({id,status:'BLOCKED',blocker:'Outside exact allowlisted isolated test',run:context.runId});core.setFailed('BLOCKED unauthorized');return;
+            }
+            // Global concurrency serializes all test orders; lowest issue number owns a duplicate ID.
+            const issues=await github.paginate(github.rest.issues.listForRepo,{owner,repo,state:'all',per_page:100});
+            const duplicates=issues.filter(i=>i.number!==issue_number && parse(i.body)?.id===id && i.number<issue_number);
+            if(duplicates.length){
+              await post({id,status:'BLOCKED',blocker:'Duplicate ID; canonical issue #'+Math.min(...duplicates.map(i=>i.number)),run:context.runId});
+              core.info('DUPLICATE_ID_BLOCKED '+id);return;
+            }
+            if(comments.some(c=>c.body?.startsWith(claim) && c.body.includes('"id":"'+id+'"'))){
+              core.info('PRIOR_CLAIM_SKIP '+id);return;
+            }
+            await github.rest.issues.createComment({owner,repo,issue_number,body:claim+JSON.stringify({id,status:'CLAIMED',run:context.runId})});
+            await github.rest.issues.createComment({owner,repo,issue_number,body:'CYBERTRON_STATUS_V0.1 '+JSON.stringify({id,status:'RUNNING',run:context.runId})});
+            if(order.test_delay_seconds===15)await new Promise(resolve=>setTimeout(resolve,15000));
+            if((await current()).state!=='open'){
+              await post({id,status:'CANCELLED',blocker:'Issue closed while task was active; no completion executed',run:context.runId});return;
+            }
+            const result=await post({id,status:'COMPLETE',worker:'github-actions-isolated',result:'Allowlisted comment-only test',source_commit:context.sha,run:context.runId,production_release:false});
+            core.info('WORKER_COMPLETE '+result.data.html_url);
