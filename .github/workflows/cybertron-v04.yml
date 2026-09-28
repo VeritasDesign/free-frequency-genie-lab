@@ -1,0 +1,25 @@
+name: Cybertron v0.4 reusable isolated source worker
+on:
+  issues:
+    types: [opened, edited, closed]
+permissions:
+  issues: write
+  contents: write
+jobs:
+  controlled-source:
+    if: startsWith(github.event.issue.title, '[CYBERTRON V04] ')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cybertron-v04-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout trusted worker source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Execute only fixed authorized source change
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const worker = require('./.github/scripts/cybertron-v04.cjs');
+            await worker({github, context, core});
