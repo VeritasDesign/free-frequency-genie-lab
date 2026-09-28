@@ -10,7 +10,7 @@ jobs:
     if: startsWith(github.event.issue.title, '[CYBERTRON TEST] ')
     runs-on: ubuntu-latest
     concurrency:
-      group: cybertron-isolated-global
+      group: cybertron-order-${{ github.event.issue.number }}
       cancel-in-progress: false
     steps:
       - name: Validate, deduplicate, and execute isolated test
