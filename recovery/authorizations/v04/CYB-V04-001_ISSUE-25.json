@@ -1,0 +1,17 @@
+{
+  "version": "0.4",
+  "id": "CYB-V04-001",
+  "issue_number": 25,
+  "requester": "VeritasDesign",
+  "worker": "cybertron-v04",
+  "task_type": "normalize-label-v1",
+  "target_repository": "VeritasDesign/free-frequency-genie-lab",
+  "target_branch": "cybertron-v04-isolated",
+  "target_path": "sandbox/v04/CYB-V04-001/labels.cjs",
+  "fixture_commit": "ab05d0ac714147122aae75a7de73ff58c83288fd",
+  "expected_source_sha": "67e010de18811d42b7e446f8035bf4419e2be6e2",
+  "scope": "exact-fixed-line-replacement",
+  "acceptance": "trim and uppercase valid labels; preserve empty fallback; pass fixed Node tests",
+  "production_release": false,
+  "test_delay_seconds": 0
+}
