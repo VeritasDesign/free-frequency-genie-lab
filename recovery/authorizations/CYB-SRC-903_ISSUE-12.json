@@ -1,0 +1,16 @@
+{
+  "version": "0.3",
+  "id": "CYB-SRC-903",
+  "issue_number": 12,
+  "requester": "VeritasDesign",
+  "worker": "cybertron-source-v0.3",
+  "task_type": "replace-isolated-dispatch-greeting",
+  "target_repository": "VeritasDesign/free-frequency-genie-lab",
+  "target_branch": "cybertron-v03-isolated",
+  "target_path": "sandbox/dispatch-target.cjs",
+  "expected_source_sha": "ba27e3f685cac94b609d2fa8ea067436a416da79",
+  "scope": "single-line-fixed-literal",
+  "acceptance": "empty input returns Systems ready.; named input unchanged; node tests pass",
+  "production_release": false,
+  "test_delay_seconds": 0
+}
