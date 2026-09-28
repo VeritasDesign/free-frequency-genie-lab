@@ -18,7 +18,7 @@ Worker run: https://github.com/VeritasDesign/free-frequency-genie-lab/actions/ru
 Worker source commit: c84443d9e94f13be3d5f0a377e24c380a7dad192
 github-actions[bot] posted CLAIMED, RUNNING, COMPLETE in issue comments. Run completed success. No source edits or deployment.
 CYB-TEST-002: https://github.com/VeritasDesign/free-frequency-genie-lab/issues/2
-Deliberately unauthorized scope production-write; expected BLOCKED. Check issue comments and workflow result before marking proven.
+Deliberately unauthorized scope production-write. PROVEN BLOCKED: github-actions[bot] posted BLOCKED receipt https://github.com/VeritasDesign/free-frequency-genie-lab/issues/2#issuecomment-5863285210; worker run https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/36377311703 completed failure as designed; no task executed.
 
 ## Capability accounting
 Level 1 durable dispatch: PROVEN for GitHub issue queue and Chief readback; another ChatGPT conversation retrieval is possible with authorized GitHub connector but not independently tested here.
