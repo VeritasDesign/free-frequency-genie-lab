@@ -1,0 +1,17 @@
+{
+  "version": "0.4",
+  "id": "CYB-V04-002",
+  "issue_number": 19,
+  "requester": "VeritasDesign",
+  "worker": "cybertron-v04",
+  "task_type": "cap-count-v1",
+  "target_repository": "VeritasDesign/free-frequency-genie-lab",
+  "target_branch": "cybertron-v04-isolated",
+  "target_path": "sandbox/v04/CYB-V04-002/counter.cjs",
+  "fixture_commit": "202a240924636ce3d026dd4666f8ea1ca093ed53",
+  "expected_source_sha": "4ca16d2710005c6058f6fe4955571e702ac07960",
+  "scope": "exact-fixed-line-replacement",
+  "acceptance": "cap valid counts at five; preserve invalid fallback; pass fixed Node tests",
+  "production_release": false,
+  "test_delay_seconds": 0
+}
