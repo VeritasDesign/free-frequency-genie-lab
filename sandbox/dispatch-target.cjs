@@ -1,6 +1,6 @@
 'use strict';
 
-const EMPTY_GREETING = 'Ready.';
+const EMPTY_GREETING = 'Systems ready.';
 
 function dispatchGreeting(name) {
   if (typeof name !== 'string' || !name.trim()) return EMPTY_GREETING;
