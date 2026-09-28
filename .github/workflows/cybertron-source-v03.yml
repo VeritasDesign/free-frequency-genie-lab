@@ -1,0 +1,25 @@
+name: Cybertron v0.3 isolated source worker
+on:
+  issues:
+    types: [opened, edited, closed]
+permissions:
+  contents: write
+  issues: write
+jobs:
+  isolated-source:
+    if: startsWith(github.event.issue.title, '[CYBERTRON SOURCE] ')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cybertron-source-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Read trusted worker source from default branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate committed authorization, test and edit only isolated source
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const worker = require('./.github/scripts/cybertron-source-v03.cjs');
+            await worker({github, context, core});
