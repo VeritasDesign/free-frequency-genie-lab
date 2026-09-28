@@ -130,7 +130,16 @@ module.exports = async function cybertronV04({github, context, core}) {
     if(!Array.isArray(registry) || registry.length>=1000) {
       await stop('BLOCKED','Manifest registry unavailable or too large to validate safely');return;
     }
-    const filePattern=new RegExp('^'+id+'_ISSUE-([0-9]+)\\.json
+    const reservePrefix=id+'_ISSUE-';
+    const durableReservations=registry.filter(f=>
+      (f.name||'').startsWith(reservePrefix) && (f.name||'').endsWith('.json')
+    ).map(f=>Number(f.name.slice(reservePrefix.length,-5)))
+      .filter(n=>Number.isSafeInteger(n) && n>0 && n<issue_number);
+    const duplicates=titleReservations.concat(durableReservations);
+    if(duplicates.length) {
+      await stop('BLOCKED','Duplicate work-order ID; canonical issue #'+
+        Math.min(...duplicates));return;
+    }
     const manifestPath='recovery/authorizations/v04/'+id+'_ISSUE-'+issue_number+'.json';
     let auth;
     try {
