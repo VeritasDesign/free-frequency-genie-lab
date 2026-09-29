@@ -47,7 +47,9 @@ jobs:
                   names=[x.get('name') for x in domains.get('domains',[]) if isinstance(x,dict)]
                   if alias not in names: raise ValueError('alias_not_attached')
                   prior=get('/v13/deployments/'+urllib.parse.quote(alias,safe=''))
-                  if (prior.get('projectId',prior.get('project',{}).get('id'))!=project or\n                      prior.get('state',prior.get('readyState'))!='READY' or\n                      not str(prior.get('id','')).startswith('dpl_')):
+                  if (prior.get('projectId',prior.get('project',{}).get('id'))!=project or
+                      prior.get('state',prior.get('readyState'))!='READY' or
+                      not str(prior.get('id','')).startswith('dpl_')):
                       raise ValueError('rollback_reference_unavailable')
                   evidence.update(status='READY',alias_attached=True,rollback_reference=prior['id'],
                                   project_id=project,production_alias=alias,release_token_rest_get_proven=True)
