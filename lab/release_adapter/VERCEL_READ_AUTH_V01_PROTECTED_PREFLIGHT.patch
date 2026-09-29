@@ -1,0 +1,13 @@
+--- a/lab/release_adapter/adapter.py
++++ b/lab/release_adapter/adapter.py
+@@ -285,7 +285,9 @@
+             raise ReleaseBlocked('vercel_readback_unavailable') from exc
+ 
+     def get_project(self, profile):
+-        return self._get('/v9/projects/' + profile['project_id'], profile)
++        # Full preflight now uses ONLY the protected GET-only project reader.
++        # Missing read authority blocks; never fall back to broad CLI auth.
++        return protected_readonly_metadata_provider().get_project(profile)
+ 
+     def get_domains(self, profile):
+         r = self._get('/v9/projects/' + profile['project_id'] + '/domains', profile)
