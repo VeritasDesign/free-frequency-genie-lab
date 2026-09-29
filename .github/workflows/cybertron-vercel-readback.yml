@@ -1,0 +1,61 @@
+name: Cybertron Vercel read authority v0.1 — isolated project metadata
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  project-metadata-proof:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL READBACK] Room Noise v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-readback
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prove Vercel project metadata using protected GET-only authority
+        env:
+          VERCEL_READ_TOKEN: ${{ secrets.VERCEL_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 lab/vercel_read_auth/provider.py \
+            --project-id prj_0egxqb5S3QwPPUtMAiYJNAOHju86 \
+            --team-id team_6lvKuv1CthbbshHpQoleqR2R \
+            --expected-name room-noise-instrument \
+            --expected-root apps/room-noise-instrument \
+            --receipt-file "$RUNNER_TEMP/cybertron-vercel-readback.json"
+      - name: Publish sanitized evidence without the credential
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/cybertron-vercel-readback.json
+        with:
+          script: |
+            const fs = require('fs');
+            let receipt;
+            try { receipt = JSON.parse(fs.readFileSync(process.env.EVIDENCE_PATH, 'utf8')); }
+            catch { receipt = {status:'BLOCKED',blocker:'provider_receipt_unavailable'}; }
+            // Do not serialize a secret or raw error, even if a file is corrupted.
+            const project = receipt.project || {};
+            const proof = {
+              status: receipt.status === 'READY' ? 'READY' : 'BLOCKED',
+              blocker: receipt.status === 'READY' ? null : String(receipt.blocker || 'unavailable').slice(0,100),
+              project_id: String(receipt.project_id || 'prj_0egxqb5S3QwPPUtMAiYJNAOHju86'),
+              id: project.id || null, name: project.name || null,
+              accountId: project.accountId || null, rootDirectory: project.rootDirectory || null,
+              verified: receipt.root_verified === true,
+              capability:'vercel_project_metadata_read_only_v0.1',
+              workflow_run: context.runId, source_commit: context.sha,
+              vercel_write_operations: 0, production_deployment:false,
+            };
+            await github.rest.issues.createComment({
+              owner:context.repo.owner, repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'CYBERTRON_VERCEL_READBACK_V0.1 '+JSON.stringify(proof)
+            });
