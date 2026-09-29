@@ -45,6 +45,9 @@ jobs:
         with:
           name: verified-project-metadata
           path: ${{ runner.temp }}/read-receipt
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Validate same-run read metadata and isolated release token
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -64,4 +67,33 @@ jobs:
           assert bool(os.environ.get('VERCEL_TOKEN'))
           assert not os.environ.get('VERCEL_READ_TOKEN')
           print('CYBERTRON_COMPOSITION=READY; vercel_writes=0; deployments=0')
+          PY
+      - name: Exact adapter and artifact PLAN_ONLY — fail closed
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+        run: |
+          set -euo pipefail
+          adapter=lab/release_adapter/adapter_repaired.py
+          artifact=lab/release_adapter/artifacts/ROOM_NOISE_PIRATE_RELEASE_ADAPTER_ARTIFACT_2026-09-28.zip
+          profile=lab/release_adapter/profiles/room_noise_reference_plan_only.json
+          test -f "$adapter" && test -f "$artifact" && test -f "$profile" || {
+            echo 'BLOCKED: exact adapter, artifact, or profile not installed'
+            exit 1
+          }
+          echo '948beda0d2c614c6d790d3f2e1d6ce658eb75b1ddddd4740b0e0a3a669a859d8  ' "$adapter" | tr -s ' ' | sha256sum -c -
+          echo 'c3e35e4ce114795c0810e4b269d6f0425ec96baaa7641fd872388db063f81da6  ' "$artifact" | tr -s ' ' | sha256sum -c -
+          test -n "${VERCEL_TOKEN:-}" && test -z "${VERCEL_READ_TOKEN:-}"
+          python3 "$adapter" --profile "$profile" --artifact "$artifact" > "$RUNNER_TEMP/plan-only.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'plan-only.json').read_text())
+          assert r['mode']=='PLAN_ONLY'
+          assert r['mutation_count']==0
+          assert r['release_enabled'] is False
+          assert r['project_id']=='prj_0egxqb5S3QwPPUtMAiYJNAOHju86'
+          assert r['required_root']=='apps/room-noise-instrument'
+          assert r['alias']=='room-noise-instrument.vercel.app'
+          assert len(r['public_alias_readback_sha256'])==4
+          print('CYBERTRON_PROTECTED_PLAN_ONLY=READY; deployment_attempts=0; mutations=0')
           PY
