@@ -1,0 +1,70 @@
+name: Cybertron Vercel CLI auth proof v0.1
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  cli-auth-proof:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL CLI AUTH PROOF] v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 8
+    steps:
+      - name: One nonmutating CLI whoami
+        id: auth
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo 'result=BLOCKED' >> "$GITHUB_OUTPUT"
+            echo 'reason=credential_unavailable' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          npm install --global vercel@latest --silent >/dev/null 2>&1
+          if vercel whoami --token "$VERCEL_TOKEN" --scope thebishco-6074s-projects >"$RUNNER_TEMP/cybertron-cli-stdout" 2>"$RUNNER_TEMP/cybertron-cli-stderr"; then
+            if [ -s "$RUNNER_TEMP/cybertron-cli-stdout" ]; then
+              echo 'result=READY' >> "$GITHUB_OUTPUT"
+              echo 'reason=none' >> "$GITHUB_OUTPUT"
+            else
+              echo 'result=BLOCKED' >> "$GITHUB_OUTPUT"
+              echo 'reason=cli_no_identity_output' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'result=BLOCKED' >> "$GITHUB_OUTPUT"
+            echo 'reason=cli_whoami_nonzero' >> "$GITHUB_OUTPUT"
+          fi
+          rm -f "$RUNNER_TEMP/cybertron-cli-stdout" "$RUNNER_TEMP/cybertron-cli-stderr"
+      - name: Publish sanitized proof
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PROOF_RESULT: ${{ steps.auth.outputs.result }}
+          PROOF_REASON: ${{ steps.auth.outputs.reason }}
+        with:
+          script: |
+            const receipt = {
+              capability: 'vercel_cli_auth_v0.1',
+              status: process.env.PROOF_RESULT === 'READY' ? 'READY' : 'BLOCKED',
+              reason: process.env.PROOF_REASON || 'step_failed',
+              environment: 'Cybertron-vercel-release',
+              credential_name: 'VERCEL_TOKEN',
+              method: 'vercel whoami --token [redacted] --scope [fixed]',
+              read_environment_accessed: false,
+              project_linked: false,
+              production_deployments: 0,
+              vercel_mutations: 0,
+              run: context.runId,
+              source_commit: context.sha
+            };
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'CYBERTRON_VERCEL_CLI_AUTH_V01 ' + JSON.stringify(receipt)
+            });
