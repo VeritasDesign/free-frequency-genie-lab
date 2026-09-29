@@ -1,0 +1,95 @@
+name: Cybertron Room Noise production release v0.1
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-project:
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-readback
+    timeout-minutes: 5
+    outputs:
+      receipt_sha256: ${{ steps.receipt.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate exact project receipt
+        env:
+          VERCEL_READ_TOKEN: ${{ secrets.VERCEL_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 lab/vercel_read_auth/provider.py --project-id prj_0egxqb5S3QwPPUtMAiYJNAOHju86 --team-id team_6lvKuv1CthbbshHpQoleqR2R --expected-name room-noise-instrument --expected-root apps/room-noise-instrument --receipt-file "$RUNNER_TEMP/project.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'],'project.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='READY' and r['root_verified'] is True
+          p.write_text(json.dumps({'source':'cybertron-protected-read-job-v0.1','workflow_run':os.environ['GITHUB_RUN_ID'],'status':'READY','project':r['project']},sort_keys=True))
+          PY
+      - id: receipt
+        run: echo "sha256=$(sha256sum "$RUNNER_TEMP/project.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/project.json
+          retention-days: 1
+
+  release-room-noise:
+    needs: read-project
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/read-receipt
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate same-run receipt and exact release identities
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+          EXPECTED_RECEIPT_SHA256: ${{ needs.read-project.outputs.receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" && test -z "${VERCEL_READ_TOKEN:-}"
+          test "$(sha256sum lab/release_adapter/adapter_repaired.py | cut -d' ' -f1)" = "948beda0d2c614c6d790d3f2e1d6ce658eb75b1ddddd4740b0e0a3a669a859d8"
+          test "$(sha256sum lab/release_adapter/artifacts/ROOM_NOISE_PIRATE_RELEASE_ADAPTER_ARTIFACT_2026-09-28.zip | cut -d' ' -f1)" = "c3e35e4ce114795c0810e4b269d6f0425ec96baaa7641fd872388db063f81da6"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['CYBERTRON_VERIFIED_PROJECT_RECEIPT'])
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==os.environ['EXPECTED_RECEIPT_SHA256']
+          r=json.loads(p.read_text())
+          assert r['source']=='cybertron-protected-read-job-v0.1'
+          assert r['workflow_run']==os.environ['GITHUB_RUN_ID']
+          assert r['status']=='READY'
+          assert r['project']=={'id':'prj_0egxqb5S3QwPPUtMAiYJNAOHju86','name':'room-noise-instrument','accountId':'team_6lvKuv1CthbbshHpQoleqR2R','rootDirectory':'apps/room-noise-instrument'}
+          PY
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+      - name: Publish exact approved Room Noise artifact once
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+        run: |
+          set -euo pipefail
+          python3 lab/release_adapter/adapter_repaired.py \
+            --profile lab/release_adapter/profiles/room_noise_release_enabled_v01.json \
+            --artifact lab/release_adapter/artifacts/ROOM_NOISE_PIRATE_RELEASE_ADAPTER_ARTIFACT_2026-09-28.zip \
+            --execute \
+            --approval lab/release_adapter/approvals/room_noise_release_2026-09-29.json \
+            | tee "$RUNNER_TEMP/release-receipt.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'release-receipt.json').read_text())
+          assert r['result']=='READY_AND_ALIAS_BYTES_MATCH'
+          assert r['project_id']=='prj_0egxqb5S3QwPPUtMAiYJNAOHju86'
+          assert r['production_alias']=='room-noise-instrument.vercel.app'
+          assert r['source_revision']=='3f42800eb4d3c56d112addcde9b10c51e8a4d721'
+          assert len(r['public_alias_readback_sha256'])==4
+          assert r['git_writes']==0 and r['other_project_deploy_requests']==0
+          print('CYBERTRON_ROOM_NOISE_RELEASE=LIVE_AND_VERIFIED')
+          PY
