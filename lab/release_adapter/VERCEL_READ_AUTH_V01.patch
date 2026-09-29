@@ -83,4 +83,4 @@
 +                # Original project+alias+rollback GET gate is unchanged.
                  prior = preflight_project(VercelCliProvider(), p)
                  plan['remote_root_verified'] = True
-                plan['rollback_reference'] = prior['previous_deployment_id']
+                 plan['rollback_reference'] = prior['previous_deployment_id']
