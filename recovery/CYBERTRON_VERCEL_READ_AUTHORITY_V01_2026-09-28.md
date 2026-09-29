@@ -59,3 +59,33 @@ profile, separate explicit approval, alias/rollback and full consequence
 preflight must remain in force. No publication occurs in this checkpoint.
 
 STOP BEFORE PRODUCTION CONSEQUENCE.
+
+## Post-proof integration refinement — appended 2026-09-28
+
+The first integration SHA above (437f3a6c...) remains preserved as an
+intermediate checkpoint. The final adapter now routes its COMPLETE production
+preflight VercelCliProvider.get_project() through the protected GET-only
+metadata authority. There is NO fallback to the broader CLI token if
+VERCEL_READ_TOKEN is absent. Identity and exact Root Directory validation
+remain unchanged. Alias association and rollback capture still use the existing
+complete preflight with their own authentication gates.
+
+- Final integrated adapter SHA-256:
+  1fb12d150ab12b253ee4f0c211aac8583b0fc33bb77dd139fb5a2b6f8750fc80.
+- Additive exact patch: lab/release_adapter/VERCEL_READ_AUTH_V01_PROTECTED_PREFLIGHT.patch.
+- Focused infrastructure checks after refinement: 5/5 PASS, including
+  full-preflight delegation; no Room Noise application tests.
+- Canonical Room Noise artifact unchanged:
+  c3e35e4ce114795c0810e4b269d6f0425ec96baaa7641fd872388db063f81da6.
+- Earlier inert PLAN_ONLY evidence remains valid: only the protected provider
+  lookup changed after that plan; unprivileged PLAN_ONLY executes no project
+  lookup. No second release plan was run.
+- Independent authenticated Vercel GET proof remains run 36508350475.
+  Root: apps/room-noise-instrument. No credential was distributed to workers.
+
+READY FOR AUTHORIZATION for authenticated project-root readback and the
+unchanged Room Noise plan. Production NOT authorized by this readback task.
+Alias/rollback, explicit release approval and release-enable flag, explicit
+linking and four public byte-readbacks all remain mandatory.
+
+STOP before production consequence.
