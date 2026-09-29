@@ -1,0 +1,23 @@
+{
+  "project_id": "prj_Fw5ajxndKKfzpbDSYLTi7zWmbR2Z",
+  "project_name": "connection-field-instrument",
+  "team_id": "team_6lvKuv1CthbbshHpQoleqR2R",
+  "team_slug": "thebishco-6074s-projects",
+  "required_root": "apps/connection-field-instrument",
+  "production_alias": "connection-field-instrument.vercel.app",
+  "artifact_paths": {
+    "api/ping.js": "api/ping.js",
+    "api/speed.js": "api/speed.js",
+    "app.js": "app.js",
+    "index.html": "index.html",
+    "package.json": "package.json",
+    "style.css": "style.css",
+    "vercel.json": "vercel.json"
+  },
+  "readback_paths": {
+    "app.js": "/app.js",
+    "index.html": "/",
+    "style.css": "/style.css"
+  },
+  "release_enabled": true
+}

@@ -1,0 +1,95 @@
+name: Cybertron Connection Tester production release v0.1
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-project:
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-readback
+    timeout-minutes: 5
+    outputs:
+      receipt_sha256: ${{ steps.receipt.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate exact project receipt
+        env:
+          VERCEL_READ_TOKEN: ${{ secrets.VERCEL_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 lab/vercel_read_auth/provider.py --project-id prj_Fw5ajxndKKfzpbDSYLTi7zWmbR2Z --team-id team_6lvKuv1CthbbshHpQoleqR2R --expected-name connection-field-instrument --expected-root apps/connection-field-instrument --receipt-file "$RUNNER_TEMP/project.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'],'project.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='READY' and r['root_verified'] is True
+          p.write_text(json.dumps({'source':'cybertron-protected-read-job-v0.1','workflow_run':os.environ['GITHUB_RUN_ID'],'status':'READY','project':r['project']},sort_keys=True))
+          PY
+      - id: receipt
+        run: echo "sha256=$(sha256sum "$RUNNER_TEMP/project.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/project.json
+          retention-days: 1
+
+  release-connection-tester:
+    needs: read-project
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/read-receipt
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate same-run receipt and exact release identities
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+          EXPECTED_RECEIPT_SHA256: ${{ needs.read-project.outputs.receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" && test -z "${VERCEL_READ_TOKEN:-}"
+          test "$(sha256sum lab/release_adapter/adapter_repaired.py | cut -d' ' -f1)" = "38d581e6c10d52430256efe309a53ccb3032ef93277c9bcc30a12beb9893a074"
+          test "$(sha256sum lab/release_adapter/artifacts/CONNECTION_TESTER_PIRATE_RELEASE_ADAPTER_ARTIFACT_2026-09-29.zip | cut -d' ' -f1)" = "80d5dd6587ca10b43c37f99b3b903b2d58c75ba5117139983b169def9c7dd887"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['CYBERTRON_VERIFIED_PROJECT_RECEIPT'])
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==os.environ['EXPECTED_RECEIPT_SHA256']
+          r=json.loads(p.read_text())
+          assert r['source']=='cybertron-protected-read-job-v0.1'
+          assert r['workflow_run']==os.environ['GITHUB_RUN_ID']
+          assert r['status']=='READY'
+          assert r['project']=={'id':'prj_Fw5ajxndKKfzpbDSYLTi7zWmbR2Z','name':'connection-field-instrument','accountId':'team_6lvKuv1CthbbshHpQoleqR2R','rootDirectory':'apps/connection-field-instrument'}
+          PY
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+      - name: Publish exact approved Connection Tester artifact once
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+        run: |
+          set -euo pipefail
+          python3 lab/release_adapter/adapter_repaired.py \
+            --profile lab/release_adapter/profiles/connection_tester_release_enabled_v01.json \
+            --artifact lab/release_adapter/artifacts/CONNECTION_TESTER_PIRATE_RELEASE_ADAPTER_ARTIFACT_2026-09-29.zip \
+            --execute \
+            --approval lab/release_adapter/approvals/connection_tester_release_2026-09-29.json \
+            | tee "$RUNNER_TEMP/release-receipt.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'release-receipt.json').read_text())
+          assert r['result']=='READY_AND_ALIAS_BYTES_MATCH'
+          assert r['project_id']=='prj_Fw5ajxndKKfzpbDSYLTi7zWmbR2Z'
+          assert r['production_alias']=='connection-field-instrument.vercel.app'
+          assert r['source_revision']=='0017d2007f67806342ff3ef83a9898b0bae3e25e'
+          assert len(r['public_alias_readback_sha256'])==3
+          assert r['git_writes']==0 and r['other_project_deploy_requests']==0
+          print('CYBERTRON_CONNECTION_TESTER_RELEASE=LIVE_AND_VERIFIED')
+          PY
