@@ -1,0 +1,85 @@
+--- a/lab/release_adapter/adapter.py
++++ b/lab/release_adapter/adapter.py
+@@ -134,7 +134,8 @@
+             'sha256': {dest: hashlib.sha256(b).hexdigest() for dest, b in blobs.items()}}
+ 
+ 
+-def preflight_project(provider, profile: dict) -> dict:
++def verify_project_identity(provider, profile: dict) -> dict:
++    """One exact ID/name/scope/root gate, shared with all release preflights."""
+     project = provider.get_project(profile)
+     if (project.get('id') != profile['project_id'] or
+             project.get('name') != profile['project_name'] or
+@@ -142,6 +143,36 @@
+         raise ReleaseBlocked('remote_project_identity_mismatch')
+     if project.get('rootDirectory') != profile['required_root']:
+         raise ReleaseBlocked('remote_root_directory_mismatch')
++    return project
++
++
++def protected_readonly_metadata_provider():
++    """Instantiate GET-only authority only inside the trusted secret boundary.
++
++    This provider intentionally has no domain, deployment, CLI or mutating API.
++    Ordinary application workers never receive VERCEL_READ_TOKEN.
++    """
++    import importlib.util
++    module_path = Path(__file__).resolve().parent.parent / 'vercel_read_auth' / 'provider.py'
++    if not module_path.is_file():
++        raise ReleaseBlocked('protected_metadata_provider_unavailable')
++    spec = importlib.util.spec_from_file_location('cybertron_vercel_read_only', module_path)
++    if spec is None or spec.loader is None:
++        raise ReleaseBlocked('protected_metadata_provider_unavailable')
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    class ReadOnly:
++        def get_project(self, profile):
++            try:
++                return module.read_project(profile['project_id'], profile['team_id'])
++            except module.ReadbackBlocked as exc:
++                # The error code is allowlisted by the protected provider.
++                raise ReleaseBlocked(str(exc)) from None
++    return ReadOnly()
++
++
++def preflight_project(provider, profile: dict) -> dict:
++    verify_project_identity(provider, profile)
+     domains = provider.get_domains(profile)
+     if profile['production_alias'] not in domains:
+         raise ReleaseBlocked('production_alias_not_attached_to_project')
+@@ -310,10 +341,13 @@
+     a.add_argument('--execute', action='store_true', help='requires exact approval JSON and release-enabled profile')
+     a.add_argument('--approval', type=Path)
+     a.add_argument('--verify-destination-readonly', action='store_true',
+-                   help='opt-in Vercel GET preflight; no link or deployment')
++                   help='opt-in original project+alias+rollback GET preflight; no link/deploy')
++    a.add_argument('--verify-project-readonly', action='store_true',
++                   help='isolated GET-only project/root preflight; requires protected environment')
+     opts = a.parse_args(argv)
+     try:
+-        if opts.execute and opts.verify_destination_readonly:
++        if ((opts.verify_destination_readonly and opts.verify_project_readonly) or
++                (opts.execute and (opts.verify_destination_readonly or opts.verify_project_readonly))):
+             raise ReleaseBlocked('preflight_only_and_execute_mutually_exclusive')
+         p = parse_profile(json.loads(opts.profile.read_text()))
+         b = load_bundle(opts.artifact, p)
+@@ -329,8 +363,19 @@
+                         if dest in NONPUBLIC_CONFIG_DESTINATIONS},
+                     'remote_root_verified': False,
+                     'release_enabled': p['release_enabled'], 'mutation_count': 0}
++            if opts.verify_project_readonly:
++                # Authenticated read authority stays in the trusted Actions
++                # environment. This mode checks ONLY project metadata; it
++                # cannot assert alias or rollback verification.
++                project = verify_project_identity(protected_readonly_metadata_provider(), p)
++                plan['remote_root_verified'] = True
++                plan['authenticated_project_metadata'] = {
++                    field: project.get(field) for field in
++                    ('id', 'name', 'accountId', 'rootDirectory')}
++                plan['alias_and_rollback_verified'] = False
++                plan['project_readback_authority'] = 'isolated_get_only_v0.1'
+             if opts.verify_destination_readonly:
+-                # Existing read-only token only. Never change provider settings.
++                # Original project+alias+rollback GET gate is unchanged.
+                 prior = preflight_project(VercelCliProvider(), p)
+                 plan['remote_root_verified'] = True
