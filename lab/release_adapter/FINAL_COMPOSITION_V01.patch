@@ -1,0 +1,95 @@
+--- a/lab/release_adapter/adapter.py
++++ b/lab/release_adapter/adapter.py
+@@ -171,12 +171,50 @@
+     return ReadOnly()
+ 
+ 
++def normalize_deployment(raw: dict) -> dict:
++    """Normalize documented Vercel deployment representations, fail closed."""
++    if type(raw) is not dict:
++        raise ReleaseBlocked('deployment_response_invalid')
++    project = raw.get('project')
++    nested_id = project.get('id') if type(project) is dict else None
++    flat_id = raw.get('projectId')
++    if flat_id and nested_id and flat_id != nested_id:
++        raise ReleaseBlocked('deployment_project_identity_conflict')
++    state = raw.get('state')
++    ready_state = raw.get('readyState')
++    if state and ready_state and state != ready_state:
++        raise ReleaseBlocked('deployment_state_conflict')
++    result = dict(raw)
++    result['projectId'] = flat_id or nested_id
++    result['state'] = state or ready_state
++    return result
++
++
++def protected_verified_project_receipt(profile: dict) -> dict:
++    """Consume metadata only from same-run protected read job; never a read token."""
++    path = os.environ.get('CYBERTRON_VERIFIED_PROJECT_RECEIPT')
++    run_id = os.environ.get('GITHUB_RUN_ID')
++    if not path or not run_id or not run_id.isdigit():
++        raise ReleaseBlocked('protected_metadata_receipt_unavailable')
++    try:
++        receipt = json.loads(Path(path).read_text())
++    except (OSError, ValueError) as exc:
++        raise ReleaseBlocked('protected_metadata_receipt_unavailable') from exc
++    if (type(receipt) is not dict or
++            receipt.get('source') != 'cybertron-protected-read-job-v0.1' or
++            receipt.get('workflow_run') != run_id or
++            receipt.get('status') != 'READY' or
++            type(receipt.get('project')) is not dict):
++        raise ReleaseBlocked('protected_metadata_receipt_invalid')
++    return receipt['project']
++
++
+ def preflight_project(provider, profile: dict) -> dict:
+     verify_project_identity(provider, profile)
+     domains = provider.get_domains(profile)
+     if profile['production_alias'] not in domains:
+         raise ReleaseBlocked('production_alias_not_attached_to_project')
+-    before = provider.get_deployment(profile, profile['production_alias'])
++    before = normalize_deployment(provider.get_deployment(profile, profile['production_alias']))
+     if (before.get('projectId') != profile['project_id'] or
+             before.get('state') != 'READY' or not before.get('id')):
+         raise ReleaseBlocked('cannot_capture_prior_production_deployment')
+@@ -224,7 +262,7 @@
+         try:
+             if not DEPLOYMENT_URL.fullmatch(deployment_url):
+                 raise ReleaseBlocked('deployment_url_invalid')
+-            deployment = provider.get_deployment(profile, deployment_url)
++            deployment = normalize_deployment(provider.get_deployment(profile, deployment_url))
+             aliases = deployment.get('alias') or []
+             if (deployment.get('projectId') != profile['project_id'] or
+                     deployment.get('state') != 'READY' or
+@@ -270,7 +308,7 @@
+     def __init__(self):
+         self.token = os.environ.get('VERCEL_TOKEN')
+         if not self.token:
+-            raise ReleaseBlocked('VERCEL_TOKEN_read_auth_unavailable')
++            raise ReleaseBlocked('VERCEL_TOKEN_release_auth_unavailable')
+ 
+     def _get(self, path: str, profile: dict):
+         url = f'https://api.vercel.com{path}'
+@@ -285,9 +323,9 @@
+             raise ReleaseBlocked('vercel_readback_unavailable') from exc
+ 
+     def get_project(self, profile):
+-        # Full preflight now uses ONLY the protected GET-only project reader.
+-        # Missing read authority blocks; never fall back to broad CLI auth.
+-        return protected_readonly_metadata_provider().get_project(profile)
++        # Trusted same-run read-job receipt; no read token enters release job.
++        # Missing receipt blocks; never fall back to release token.
++        return protected_verified_project_receipt(profile)
+ 
+     def get_domains(self, profile):
+         r = self._get('/v9/projects/' + profile['project_id'] + '/domains', profile)
+@@ -297,8 +335,8 @@
+         return self._get('/v13/deployments/' + parse.quote(ref, safe=''), profile)
+ 
+     def _cli(self, args, workspace: Path):
+-        # No shell; existing CLI auth only, no keys in arguments, logs or receipt.
+-        cmd = ['vercel'] + args + ['--scope', profile_slug(self._current_profile)]
++        # No shell. CLI receives release token explicitly; never log argv or output.
++        cmd = ['vercel'] + args + ['--scope', profile_slug(self._current_profile), '--token', self.token]
+         p = subprocess.run(cmd, cwd=workspace, text=True, capture_output=True,
+                           timeout=180, check=False)
