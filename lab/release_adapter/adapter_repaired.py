@@ -28,7 +28,7 @@ TEAM_ID = re.compile(r"team_[A-Za-z0-9]+\Z")
 NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,99}\Z")
 DOMAIN = re.compile(r"(?=.{4,253}\Z)[A-Za-z0-9]+(?:[.-][A-Za-z0-9-]+)+\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
-# Only known top-level Vercel/package configurations are not public assets.
+# Only known top-level configs and serverless api/ source are not public HTTP assets.
 NONPUBLIC_CONFIG_DESTINATIONS = frozenset({"package.json", "vercel.json"})
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
 DEPLOYMENT_URL = re.compile(r"https://[a-zA-Z0-9-]+\.vercel\.app(?=\s|$)")
@@ -45,6 +45,11 @@ def safe_path(value: str) -> str:
     if any(seg in ('.', '..', '') for seg in value.split('/')) or p.as_posix() != value:
         raise ReleaseBlocked('unsafe_relative_path')
     return value
+
+
+def requires_public_readback(destination: str) -> bool:
+    """Exempt only top-level configs and source beneath api/ from HTTP byte readback."""
+    return destination not in NONPUBLIC_CONFIG_DESTINATIONS and not destination.startswith('api/')
 
 
 def parse_profile(raw: dict) -> dict:
@@ -73,7 +78,7 @@ def parse_profile(raw: dict) -> dict:
     # Only recognized, top-level Vercel/package configuration files may
     # be exempted from PUBLIC HTTP readback; never exempt arbitrary assets.
     destinations = set(p['artifact_paths'].values())
-    required_public = destinations - NONPUBLIC_CONFIG_DESTINATIONS
+    required_public = {dest for dest in destinations if requires_public_readback(dest)}
     if (type(p['readback_paths']) is not dict or not required_public or
             set(p['readback_paths']) != required_public):
         raise ReleaseBlocked('readback_mapping_invalid')
@@ -271,7 +276,7 @@ def publish(profile: dict, bundle: dict, provider, approval: dict) -> dict:
                     not isinstance(deployment.get('id'), str) or not deployment['id'].startswith('dpl_')):
                 raise ReleaseBlocked('deployment_identity_or_alias_not_verified')
             # Verify exact production alias bytes of every PUBLIC asset.
-            # package.json and vercel.json have instead been verified from
+            # package.json, vercel.json, and api/ source have instead been verified from
             # the canonical archive and staged byte-for-byte before link.
             for dest, route in profile['readback_paths'].items():
                 data = provider.read_alias(profile, route)
