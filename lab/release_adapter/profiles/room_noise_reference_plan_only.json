@@ -1,0 +1,23 @@
+{
+  "project_id": "prj_0egxqb5S3QwPPUtMAiYJNAOHju86",
+  "project_name": "room-noise-instrument",
+  "team_id": "team_6lvKuv1CthbbshHpQoleqR2R",
+  "team_slug": "thebishco-6074s-projects",
+  "required_root": "apps/room-noise-instrument",
+  "production_alias": "room-noise-instrument.vercel.app",
+  "artifact_paths": {
+    "app.js": "app.js",
+    "index.html": "index.html",
+    "package.json": "package.json",
+    "style-1997.css": "style-1997.css",
+    "style.css": "style.css",
+    "vercel.json": "vercel.json"
+  },
+  "readback_paths": {
+    "app.js": "/app.js",
+    "index.html": "/",
+    "style-1997.css": "/style-1997.css",
+    "style.css": "/style.css"
+  },
+  "release_enabled": false
+}
