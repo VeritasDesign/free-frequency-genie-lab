@@ -1,0 +1,89 @@
+name: Cybertron Vercel release authority v0.1 — nondeploying preflight
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  release-authority-preflight:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL RELEASE AUTHORITY] Room Noise v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 8
+    steps:
+      - name: Isolated release-token REST GET preflight
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.parse, urllib.error
+          from pathlib import Path
+          evidence={'capability':'vercel_release_authority_v0.1',
+                    'release_environment':'Cybertron-vercel-release',
+                    'credential':'VERCEL_TOKEN (value withheld)',
+                    'read_environment':'Cybertron-vercel-readback (not accessed)',
+                    'status':'BLOCKED','vercel_writes':0,'deployments':0}
+          token=os.environ.get('VERCEL_TOKEN')
+          if not token:
+              evidence['blocker']='release_token_unavailable'
+          else:
+              team='team_6lvKuv1CthbbshHpQoleqR2R'
+              project='prj_0egxqb5S3QwPPUtMAiYJNAOHju86'
+              alias='room-noise-instrument.vercel.app'
+              def get(path):
+                  url='https://api.vercel.com'+path+'?'+urllib.parse.urlencode({'teamId':team})
+                  req=urllib.request.Request(url,headers={'Authorization':'Bearer '+token,'Accept':'application/json'},method='GET')
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      if response.status!=200 or response.geturl()!=url: raise ValueError('unexpected_http_response')
+                      return json.load(response)
+              try:
+                  domains=get('/v9/projects/'+project+'/domains')
+                  names=[x.get('name') for x in domains.get('domains',[]) if isinstance(x,dict)]
+                  if alias not in names: raise ValueError('alias_not_attached')
+                  prior=get('/v13/deployments/'+urllib.parse.quote(alias,safe=''))
+                  if prior.get('projectId')!=project or prior.get('state')!='READY' or not str(prior.get('id','')).startswith('dpl_'):
+                      raise ValueError('rollback_reference_unavailable')
+                  evidence.update(status='READY',alias_attached=True,rollback_reference=prior['id'],
+                                  project_id=project,production_alias=alias,release_token_rest_get_proven=True)
+              except urllib.error.HTTPError as e:
+                  evidence['blocker']='release_token_http_'+str(e.code)
+              except (urllib.error.URLError,ValueError,KeyError,TimeoutError) as e:
+                  evidence['blocker']=str(e) if isinstance(e,ValueError) else 'release_preflight_unavailable'
+          Path(os.environ['RUNNER_TEMP'],'cybertron-release-proof.json').write_text(json.dumps(evidence))
+          print('CYBERTRON_RELEASE_AUTHORITY='+evidence['status'])
+          PY
+      - name: Publish allowlisted nondeploying receipt
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PROOF_FILE: ${{ runner.temp }}/cybertron-release-proof.json
+        with:
+          script: |
+            const fs=require('fs');
+            let e={status:'BLOCKED',blocker:'receipt_unavailable'};
+            try { e=JSON.parse(fs.readFileSync(process.env.PROOF_FILE,'utf8')); } catch {}
+            const receipt={
+              capability:'vercel_release_authority_v0.1',
+              status:e.status==='READY'?'READY':'BLOCKED',
+              blocker:e.status==='READY'?null:String(e.blocker||'unavailable').slice(0,100),
+              release_environment:'Cybertron-vercel-release',
+              read_environment_unchanged:true,
+              release_token_rest_get_proven:e.release_token_rest_get_proven===true,
+              project_id:e.project_id||null,
+              alias_attached:e.alias_attached===true,
+              rollback_reference:e.rollback_reference||null,
+              workflow_run:context.runId,
+              source_commit:context.sha,
+              vercel_writes:0,deployments:0
+            };
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'CYBERTRON_VERCEL_RELEASE_AUTHORITY_V01 '+JSON.stringify(receipt)
+            });
