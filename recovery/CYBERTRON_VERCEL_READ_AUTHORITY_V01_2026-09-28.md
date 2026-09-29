@@ -89,3 +89,36 @@ Alias/rollback, explicit release approval and release-enable flag, explicit
 linking and four public byte-readbacks all remain mandatory.
 
 STOP before production consequence.
+
+## Final resumed integration verification — 2026-09-28
+
+- Independent authenticated root proof REUSED, not re-executed: Actions run
+  36508350475, exact project id/name/team/root matched. Public sanitized
+  evidence: https://github.com/VeritasDesign/free-frequency-genie-lab/issues/28#issuecomment-5881931106
+- Final integrated adapter SHA-256:
+  `1fb12d150ab12b253ee4f0c211aac8583b0fc33bb77dd139fb5a2b6f8750fc80`.
+  Baseline SHA-256:
+  `39a1b53dff8f06ba28c398db0af98479fb850a1db01821bbe806b139d569a711`.
+  The two exact additive integration patches are already durable at
+  `lab/release_adapter/VERCEL_READ_AUTH_V01.patch` and
+  `lab/release_adapter/VERCEL_READ_AUTH_V01_PROTECTED_PREFLIGHT.patch`.
+  They preserve original complete alias/rollback, approval, source-integrity,
+  project identity/root, explicit-linking and public-byte-readback gates.
+- Exactly ONE fresh final-adapter local PLAN_ONLY was run, no execute:
+  approved release ZIP SHA-256
+  `c3e35e4ce114795c0810e4b269d6f0425ec96baaa7641fd872388db063f81da6`;
+  plan SHA-256
+  `7a43bdf3f385b2551fe127a34750cc116045e4cc7c152ee24d8090a8c5b05bdb`.
+  PLAN_ONLY reports six staged source hashes, four public readback mappings,
+  two nonpublic config hashes, `release_enabled=false`, `mutation_count=0`,
+  and `remote_root_verified=false` because the local process is unprivileged.
+  This false value is not a contradiction of the independently authenticated
+  GitHub Actions root readback. Do not treat the public evidence as a
+  deploy-authorizing token or as a substitute for live alias/rollback preflight.
+- Provider Git blob `e27d2fdf4d57c71d9b87b159957baa676018648c`;
+  workflow Git blob `2e17df64c2bd5d16a99c2c56ffdc52130c27da8d`;
+  provider/workflow proof commit `8680e268043ed88c78a52583aa49d4e2bfe8843c`.
+- **READY FOR AUTHORIZATION — metadata capability and inert release plan only.**
+  Full authenticated alias/rollback preflight, explicit approval, release-enable
+  and exact post-release public byte readback remain mandatory. NO production
+  deployment was attempted. STOP before production consequence.
