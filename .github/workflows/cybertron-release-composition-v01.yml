@@ -1,0 +1,67 @@
+name: Cybertron release composition v0.1 — isolated credential handoff
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-project:
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-readback
+    timeout-minutes: 5
+    outputs:
+      receipt_sha256: ${{ steps.receipt.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate four-field project receipt in read-only boundary
+        env:
+          VERCEL_READ_TOKEN: ${{ secrets.VERCEL_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 lab/vercel_read_auth/provider.py --project-id prj_0egxqb5S3QwPPUtMAiYJNAOHju86 --team-id team_6lvKuv1CthbbshHpQoleqR2R --expected-name room-noise-instrument --expected-root apps/room-noise-instrument --receipt-file "$RUNNER_TEMP/project.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'],'project.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='READY' and r['root_verified'] is True
+          p.write_text(json.dumps({'source':'cybertron-protected-read-job-v0.1','workflow_run':os.environ['GITHUB_RUN_ID'],'status':'READY','project':r['project']},sort_keys=True))
+          PY
+      - name: Bind artifact identity to protected job
+        id: receipt
+        run: echo "sha256=$(sha256sum "$RUNNER_TEMP/project.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/project.json
+          retention-days: 1
+  release-boundary:
+    needs: read-project
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-project-metadata
+          path: ${{ runner.temp }}/read-receipt
+      - name: Validate same-run read metadata and isolated release token
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CYBERTRON_VERIFIED_PROJECT_RECEIPT: ${{ runner.temp }}/read-receipt/project.json
+          EXPECTED_RECEIPT_SHA256: ${{ needs.read-project.outputs.receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['CYBERTRON_VERIFIED_PROJECT_RECEIPT'])
+          assert hashlib.sha256(p.read_bytes()).hexdigest()==os.environ['EXPECTED_RECEIPT_SHA256']
+          r=json.loads(p.read_text())
+          assert r['source']=='cybertron-protected-read-job-v0.1'
+          assert r['workflow_run']==os.environ['GITHUB_RUN_ID']
+          assert r['status']=='READY'
+          assert r['project']=={'id':'prj_0egxqb5S3QwPPUtMAiYJNAOHju86','name':'room-noise-instrument','accountId':'team_6lvKuv1CthbbshHpQoleqR2R','rootDirectory':'apps/room-noise-instrument'}
+          assert bool(os.environ.get('VERCEL_TOKEN'))
+          assert not os.environ.get('VERCEL_READ_TOKEN')
+          print('CYBERTRON_COMPOSITION=READY; vercel_writes=0; deployments=0')
+          PY
