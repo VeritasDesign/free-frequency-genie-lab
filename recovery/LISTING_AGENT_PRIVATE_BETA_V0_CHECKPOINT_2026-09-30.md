@@ -81,3 +81,38 @@ SHA-256 `e059e96610b95f1d76775835b996fdc1ca3ae4c3158c0b2a9c43ef7b5e62ba77`.
 Factory did NOT fabricate a new ZIP for the privacy amendment because its local checkout was incomplete. The canonical amended candidate is therefore currently the exact Git branch snapshot at HEAD `9e007a4ce332df7d42dfe9b2de4bd8a78cb8054f`; do not claim an amended ZIP exists until exact complete bytes are packaged and hashed.
 
 UNKNOWN > invented continuity.
+
+
+## Factory retirement handoff — 2026-09-30
+
+### Canonical state at retirement
+- Listing Agent production commercial release remains live by Shannon's field report and is untouched by this beta work. Production Worker `free-frequency-factory` remains strictly out of scope.
+- Canonical Private Beta source remains `VeritasDesign/free-frequency-factory`, branch `listing-agent-private-beta-v0-2026-09-30`, HEAD `9e007a4ce332df7d42dfe9b2de4bd8a78cb8054f`.
+- Existing isolated Cloudflare Worker is confirmed as `listing-agent-private-beta-v0`.
+- At retirement, that Worker has no Git connection, no runtime variables/secrets, no bindings, and no Cloudflare Builds history. Its existing shell/manual version is NOT evidence of beta readiness.
+- Git connection setup is in progress for `VeritasDesign/free-frequency-factory` using production branch `listing-agent-private-beta-v0-2026-09-30`, but **Connect has NOT been clicked**. No Git connection/write occurred.
+- Required Cloudflare execution root is `apps/bucklist-listing-agent`. The current Cloudflare connection dialog does not expose project/root directory, so execution context must be VERIFIED before Connect.
+
+### Beta actuator control plane
+- GitHub repository rulesets are unavailable under the repository's current plan/state; Chief observed GitHub API 403: "Upgrade to GitHub Pro or make this repository public to enable this feature."
+- Classic private-repository branch protection / paid environment protections are not an established control here. Treat the beta branch as unprotected input; do not weaken the threat model.
+- Preserve Cloudflare as the credential/resource boundary. GitHub supplies candidate bytes; production Cloudflare capability must not be available to the beta actuator.
+- Wrangler pin gate PASSED: exact version `wrangler@4.135.0`.
+- Approved non-promoting actuator command:
+  `npx wrangler@4.135.0 versions upload --config wrangler.beta.jsonc --strict`
+- Actuator remains **versions upload only**. No promotion/deploy is authorized.
+
+### Gates still open
+- Resolve real beta-only `BETA_PRIVATE` and `BETA_IMAGES` KV IDs and prove they are newly created/non-production before use.
+- `BETA_USAGE` / `BetaUsage` requires a separately authorized one-time bootstrap.
+- Beta runtime variables, bindings and secrets remain unprovisioned/unapproved.
+- eBay beta callback/RuName remains unresolved until the isolated Worker hostname/execution context is established; do not guess it.
+- No tester invitations. Preserve the **LIMIT TORTURE GATE** before external tester access.
+- No real tester OAuth connection, payment integration, or eBay publication is authorized.
+- Production must remain untouched.
+
+### Artifact continuity
+The artifact/ZIP rule above remains mandatory: preserve a complete candidate/package only from complete exact bytes; compute SHA-256; retain exact original bytes; record provenance + receipt for `VeritasDesign/free-frequency-artifacts`; storage never implies approval or deployment. Never fabricate a ZIP from an incomplete checkout.
+
+### Replacement Factory boot point
+Boot from this checkpoint plus the canonical beta source HEAD above. Immediate next task is **verify Cloudflare execution root/context before Connect**. Do not click Connect or provision/deploy until separately authorized.
