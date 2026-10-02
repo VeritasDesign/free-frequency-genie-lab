@@ -1,0 +1,107 @@
+name: Cybertron bounded isolated software-build worker
+on:
+  issues:
+    types: [opened]
+permissions:
+  issues: write
+  contents: write
+jobs:
+  build:
+    if: startsWith(github.event.issue.title, '[CYBERTRON BUILD] ')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cybertron-build-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Validate exact canary work order
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue=context.payload.issue;
+            const marker='<!-- CYBERTRON-BUILD-WO-V0.1', end=' -->';
+            const a=issue.body?.indexOf(marker)??-1,b=a<0?-1:issue.body.indexOf(end,a);
+            let o=null; try{o=JSON.parse(issue.body.slice(a+marker.length,b))}catch{}
+            const exact=o && o.version==='0.1' && /^CYB-BUILD-[0-9]{3,6}$/.test(o.id||'') &&
+              o.worker==='github-actions-bounded-build' &&
+              o.task_type==='isolated-software-build' &&
+              o.repository==='VeritasDesign/free-frequency-genie-lab' &&
+              o.branch==='cybertron-isolated-build-canary-v0-2026-10-01' &&
+              JSON.stringify(o.allowed_paths)===JSON.stringify(['cybertron-fixture/**']) &&
+              JSON.stringify(o.operations)===JSON.stringify(['create','modify','test','artifact','commit']) &&
+              JSON.stringify(o.test_commands)===JSON.stringify(['node --test cybertron-fixture/test.mjs']) &&
+              o.production_write===false && o.deploy===false;
+            if(!exact){
+              await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:'CYBERTRON_BUILD_RECEIPT_V0.1 '+JSON.stringify({id:o?.id||'UNKNOWN',status:'BLOCKED',blocker:'Outside exact isolated-build canary allowlist',run:context.runId})});
+              core.setFailed('BLOCKED unauthorized build order'); return;
+            }
+            const comments=await github.paginate(github.rest.issues.listComments,{owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,per_page:100});
+            if(comments.some(c=>c.body?.startsWith('CYBERTRON_BUILD_RECEIPT_V0.1 ')&&c.body?.includes('"id":"'+o.id+'"'))){core.setFailed('REPLAY_BLOCKED');return}
+            core.setOutput('id',o.id);
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:'CYBERTRON_BUILD_STATUS_V0.1 '+JSON.stringify({id:o.id,status:'CLAIMED',run:context.runId})});
+      - name: Checkout isolated canary branch
+        if: steps.validate.outcome == 'success'
+        uses: actions/checkout@v4
+        with:
+          ref: cybertron-isolated-build-canary-v0-2026-10-01
+          fetch-depth: 1
+      - name: Create bounded canary source
+        if: steps.validate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cybertron-fixture
+          printf '%s\n' 'export function add(a,b){return a+b}' > cybertron-fixture/canary.mjs
+          printf '%s\n' "import test from 'node:test'; import assert from 'node:assert/strict'; import {add} from './canary.mjs'; test('bounded canary',()=>assert.equal(add(2,3),5));" > cybertron-fixture/test.mjs
+          changed="$(git status --porcelain | awk '{print $2}')"
+          test -n "$changed"
+          if printf '%s\n' "$changed" | grep -Ev '^cybertron-fixture/'; then echo 'FORBIDDEN_PATH_CHANGE'; exit 90; fi
+      - name: Run permitted test
+        if: steps.validate.outcome == 'success'
+        run: node --test cybertron-fixture/test.mjs
+      - name: Build immutable candidate
+        if: steps.validate.outcome == 'success'
+        id: pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --sort=name --mtime='UTC 2026-10-01' --owner=0 --group=0 --numeric-owner -czf cybertron-isolated-build-canary-v0.tar.gz cybertron-fixture
+          sha256sum cybertron-isolated-build-canary-v0.tar.gz | tee artifact.sha256
+          echo "sha=$(cut -d' ' -f1 artifact.sha256)" >> "$GITHUB_OUTPUT"
+      - name: Commit only bounded fixture
+        if: steps.validate.outcome == 'success'
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cybertron-fixture
+          git diff --cached --name-only | grep -Ev '^cybertron-fixture/' && exit 91 || true
+          git commit -m "cybertron: isolated build canary ${{ steps.validate.outputs.id }}"
+          git push origin HEAD:cybertron-isolated-build-canary-v0-2026-10-01
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Upload immutable candidate
+        if: steps.validate.outcome == 'success'
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cybertron-isolated-build-canary-v0
+          path: |
+            cybertron-isolated-build-canary-v0.tar.gz
+            artifact.sha256
+          if-no-files-found: error
+          retention-days: 7
+      - name: Complete receipt
+        if: steps.validate.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          ORDER_ID: ${{ steps.validate.outputs.id }}
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+          ARTIFACT_SHA: ${{ steps.pack.outputs.sha }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        with:
+          script: |
+            const r={id:process.env.ORDER_ID,status:'COMPLETE',task_type:'isolated-software-build',repository:'VeritasDesign/free-frequency-genie-lab',branch:'cybertron-isolated-build-canary-v0-2026-10-01',allowed_paths:['cybertron-fixture/**'],test:'node --test cybertron-fixture/test.mjs',commit_sha:process.env.COMMIT_SHA,artifact_sha256:process.env.ARTIFACT_SHA,upload_artifact_digest:process.env.ARTIFACT_DIGEST,artifact_id:process.env.ARTIFACT_ID,run:context.runId,production_write:false,deploy:false};
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:'CYBERTRON_BUILD_RECEIPT_V0.1 '+JSON.stringify(r)});
