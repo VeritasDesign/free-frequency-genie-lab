@@ -12,6 +12,11 @@ PROJECTS={
     "phenom":"prj_sjAaXrT1rnESqpSDlZgcJrcyklES",
     "listing_agent_v0":"prj_iBbMna2uhxVMk2eqMbRhMOKbChnf",
     "free-frequency-factory":"prj_pPfDaTfR0D8ri4zGbV1hbybfCVvr",
+    "the-room-v0-4":"prj_iqCAylxvhZgx2YQmPIqjDTCUFWc2",
+    "free_frequency_os_v0":"prj_JupSjtsJA4OC1hqJz5KSuZCkFr31",
+    "zillions-for-autumn":"prj_FA00NatBOjc1ejoQ1X2rsEiqH1gp",
+    "shannon-bishop-basket":"prj_zq4Ug9nvjkVqNVqILrSnc1EecLbw",
+    "justine-autumn":"prj_ZI2dCF2DjCPVI8RTPMZlqrtqvSdj",
 }
 
 class InventoryBlocked(ValueError):
