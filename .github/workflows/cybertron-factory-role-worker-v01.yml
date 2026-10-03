@@ -113,6 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          find lab/release_adapter -type d -name __pycache__ -prune -exec rm -rf {} +
           changed="$(git status --porcelain | awk '{print $2}')"
           test -n "$changed"
           forbidden="$(printf '%s\n' "$changed" | grep -Ev '^(lab/release_adapter/adapter_repaired.py|lab/release_adapter/test_deployment_polling.py)$' || true)"
