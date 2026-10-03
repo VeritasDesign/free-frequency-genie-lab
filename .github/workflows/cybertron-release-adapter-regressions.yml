@@ -1,0 +1,24 @@
+name: Cybertron release adapter regressions
+
+on:
+  pull_request:
+    paths:
+      - 'lab/release_adapter/**'
+      - 'lab/vercel_read_auth/**'
+      - '.github/workflows/cybertron-release-adapter-regressions.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  focused-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run focused release-adapter regressions
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v lab.release_adapter.test_serverless_readback lab.release_adapter.test_deployment_polling lab.release_adapter.test_project_root_mode lab.vercel_read_auth.test_provider_root_mode

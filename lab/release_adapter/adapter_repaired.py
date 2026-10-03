@@ -54,16 +54,24 @@ def requires_public_readback(destination: str) -> bool:
 
 
 def parse_profile(raw: dict) -> dict:
-    keys = {'project_id', 'project_name', 'team_id', 'team_slug', 'required_root',
-            'production_alias', 'artifact_paths', 'readback_paths', 'release_enabled'}
-    if type(raw) is not dict or set(raw) != keys:
+    legacy_keys = {'project_id', 'project_name', 'team_id', 'team_slug', 'required_root',
+                   'production_alias', 'artifact_paths', 'readback_paths', 'release_enabled'}
+    root_mode_keys = legacy_keys | {'root_mode'}
+    if type(raw) is not dict or set(raw) not in (legacy_keys, root_mode_keys):
         raise ReleaseBlocked('project_profile_schema_invalid')
     p = dict(raw)
     if not PROJECT_ID.fullmatch(p['project_id']) or not TEAM_ID.fullmatch(p['team_id']):
         raise ReleaseBlocked('project_or_team_id_invalid')
     if not NAME.fullmatch(p['project_name']) or not NAME.fullmatch(p['team_slug']):
         raise ReleaseBlocked('project_or_team_name_invalid')
-    safe_path(p['required_root'])
+    root_mode = p.get('root_mode', 'subdirectory')
+    if root_mode not in ('subdirectory', 'project-root'):
+        raise ReleaseBlocked('root_mode_invalid')
+    if root_mode == 'subdirectory':
+        safe_path(p['required_root'])
+    elif p['required_root'] is not None:
+        raise ReleaseBlocked('project_root_requires_null_required_root')
+    p['root_mode'] = root_mode
     if not DOMAIN.fullmatch(p['production_alias']):
         raise ReleaseBlocked('alias_invalid')
     if type(p['release_enabled']) is not bool:
@@ -274,8 +282,14 @@ def publish(profile: dict, bundle: dict, provider, approval: dict) -> dict:
     rollback = preflight_project(provider, profile)
     with tempfile.TemporaryDirectory(prefix='cybertron-scoped-release-') as root:
         workspace = Path(root)
-        app_root = workspace / profile['required_root']
-        app_root.mkdir(parents=True, exist_ok=False)
+        root_mode = profile.get('root_mode', 'subdirectory')
+        if root_mode == 'project-root':
+            if profile.get('required_root') is not None:
+                raise ReleaseBlocked('project_root_requires_null_required_root')
+            app_root = workspace
+        else:
+            app_root = workspace / profile['required_root']
+            app_root.mkdir(parents=True, exist_ok=False)
         for dest, data in bundle['blobs'].items():
             f = app_root / dest
             f.parent.mkdir(parents=True, exist_ok=True)
@@ -322,7 +336,7 @@ def publish(profile: dict, bundle: dict, provider, approval: dict) -> dict:
         return {
             'result': 'READY_AND_ALIAS_BYTES_MATCH',
             'project_id': profile['project_id'], 'project_name': profile['project_name'],
-            'root_directory': profile['required_root'],
+            'root_mode': root_mode, 'root_directory': profile['required_root'],
             'production_alias': profile['production_alias'],
             'source_revision': bundle['revision'],
             'artifact_sha256': bundle['sha256'],
@@ -431,7 +445,8 @@ def main(argv=None):
         b = load_bundle(opts.artifact, p)
         if not opts.execute:
             plan = {'mode': 'PLAN_ONLY', 'project_id': p['project_id'],
-                    'project_name': p['project_name'], 'required_root': p['required_root'],
+                    'project_name': p['project_name'], 'root_mode': p['root_mode'],
+                    'required_root': p['required_root'],
                     'alias': p['production_alias'], 'source_revision': b['revision'],
                     'artifact_sha256': b['sha256'],
                     'public_alias_readback_sha256': {
