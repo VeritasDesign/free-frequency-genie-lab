@@ -1,0 +1,163 @@
+name: Cybertron Vercel Git disconnect app batch v0.1
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  disconnect-app-projects:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL GIT BATCH] isolate app projects v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 10
+    steps:
+      - name: Install Vercel CLI
+        run: |
+          set -euo pipefail
+          npm install --global vercel@latest --silent >/dev/null 2>&1
+          vercel --version > "$RUNNER_TEMP/vercel-version.txt"
+
+      - name: Preflight all exact projects before any mutation
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          python3 - <<'PY'
+          import json, os
+          from urllib import parse, request
+
+          team='team_6lvKuv1CthbbshHpQoleqR2R'
+          token=os.environ['VERCEL_TOKEN']
+          projects=[
+              ('room-noise-instrument','prj_0egxqb5S3QwPPUtMAiYJNAOHju86','apps/room-noise-instrument'),
+              ('phenom','prj_sjAaXrT1rnESqpSDlZgcJrcyklES','apps/phenom'),
+              ('listing_agent_v0','prj_iBbMna2uhxVMk2eqMbRhMOKbChnf','apps/bucklist-listing-agent'),
+          ]
+          rows=[]
+          for name,pid,root in projects:
+              url='https://api.vercel.com/v9/projects/'+pid+'?'+parse.urlencode({'teamId':team})
+              req=request.Request(url,method='GET',headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with request.urlopen(req,timeout=20) as r:
+                  data=json.load(r)
+              assert data.get('id')==pid
+              assert data.get('name')==name
+              assert data.get('accountId')==team
+              assert data.get('rootDirectory')==root
+              link=data.get('link')
+              assert isinstance(link,dict)
+              assert link.get('type')=='github'
+              assert link.get('repo')=='free-frequency-factory'
+              assert link.get('org')=='VeritasDesign'
+              rows.append({
+                  'name':name,'id':pid,'rootDirectory':root,
+                  'prior_link':{
+                      'type':link.get('type'),
+                      'repo':link.get('repo'),
+                      'org':link.get('org'),
+                      'productionBranch':link.get('productionBranch'),
+                  }
+              })
+          open(os.environ['RUNNER_TEMP']+'/vercel-git-batch-preflight.json','w').write(json.dumps(rows,sort_keys=True))
+          PY
+
+      - name: Disconnect Git from exact app projects only
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          export TEAM_SLUG='thebishco-6074s-projects'
+          export TEAM_ID='team_6lvKuv1CthbbshHpQoleqR2R'
+          for pair in             'room-noise-instrument:prj_0egxqb5S3QwPPUtMAiYJNAOHju86'             'phenom:prj_sjAaXrT1rnESqpSDlZgcJrcyklES'             'listing_agent_v0:prj_iBbMna2uhxVMk2eqMbRhMOKbChnf'
+          do
+            name="${pair%%:*}"
+            pid="${pair#*:}"
+            dir="$RUNNER_TEMP/vercel-link-${name}"
+            mkdir -p "$dir"
+            cd "$dir"
+            vercel link --yes --project "$pid" --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
+            export EXPECTED_PID="$pid"
+            python3 - <<'PY'
+            import json, os
+            data=json.load(open('.vercel/project.json'))
+            assert data.get('projectId')==os.environ['EXPECTED_PID']
+            assert data.get('orgId')==os.environ['TEAM_ID']
+            PY
+            vercel git disconnect --yes --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
+          done
+
+      - name: Verify all three links removed and publish receipt file
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from urllib import parse, request
+
+          team='team_6lvKuv1CthbbshHpQoleqR2R'
+          token=os.environ['VERCEL_TOKEN']
+          prior=json.load(open(os.environ['RUNNER_TEMP']+'/vercel-git-batch-preflight.json'))
+          by_id={row['id']:row for row in prior}
+          results=[]
+          for name,pid,root in [
+              ('room-noise-instrument','prj_0egxqb5S3QwPPUtMAiYJNAOHju86','apps/room-noise-instrument'),
+              ('phenom','prj_sjAaXrT1rnESqpSDlZgcJrcyklES','apps/phenom'),
+              ('listing_agent_v0','prj_iBbMna2uhxVMk2eqMbRhMOKbChnf','apps/bucklist-listing-agent'),
+          ]:
+              url='https://api.vercel.com/v9/projects/'+pid+'?'+parse.urlencode({'teamId':team})
+              req=request.Request(url,method='GET',headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with request.urlopen(req,timeout=20) as r:
+                  data=json.load(r)
+              assert data.get('id')==pid
+              assert data.get('name')==name
+              assert data.get('accountId')==team
+              assert data.get('rootDirectory')==root
+              assert not isinstance(data.get('link'),dict)
+              results.append({
+                  'id':pid,'name':name,'rootDirectory':root,
+                  'prior_link':by_id[pid]['prior_link'],
+                  'current_link':None,
+              })
+          version=open(os.environ['RUNNER_TEMP']+'/vercel-version.txt').read().strip()
+          receipt={
+              'status':'COMPLETE',
+              'capability':'vercel_git_disconnect_app_batch_v0.1',
+              'projects':results,
+              'vercel_cli_version':version,
+              'git_connection_mutations':3,
+              'deployments':0,
+              'production_alias_changes':0,
+              'domain_changes':0,
+              'hq_git_connection_changed':False,
+          }
+          open(os.environ['RUNNER_TEMP']+'/vercel-git-batch-receipt.json','w').write(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - name: Publish sanitized batch receipt
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RECEIPT_PATH: ${{ runner.temp }}/vercel-git-batch-receipt.json
+        with:
+          script: |
+            const fs=require('fs');
+            let receipt;
+            try { receipt=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8')); }
+            catch { receipt={status:'BLOCKED',capability:'vercel_git_disconnect_app_batch_v0.1'}; }
+            receipt.workflow_run=context.runId;
+            receipt.source_commit=context.sha;
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,
+              repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'CYBERTRON_VERCEL_GIT_DISCONNECT_APP_BATCH_V0.1 '+JSON.stringify(receipt)
+            });
