@@ -85,12 +85,7 @@ jobs:
             cd "$dir"
             vercel link --yes --project "$pid" --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
             export EXPECTED_PID="$pid"
-            python3 - <<'PY'
-            import json, os
-            data=json.load(open('.vercel/project.json'))
-            assert data.get('projectId')==os.environ['EXPECTED_PID']
-            assert data.get('orgId')==os.environ['TEAM_ID']
-            PY
+            python3 -c "import json,os; d=json.load(open('.vercel/project.json')); assert d.get('projectId')==os.environ['EXPECTED_PID']; assert d.get('orgId')==os.environ['TEAM_ID']"
             vercel git disconnect --yes --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
           done
 
