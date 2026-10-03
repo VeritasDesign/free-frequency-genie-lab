@@ -1,0 +1,26 @@
+name: Cybertron role router v0.1
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cybertron-role-router-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout trusted router source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Route bounded role work order
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const router = require('./.github/scripts/cybertron-role-router-v01.cjs');
+            await router.run({github, context, core});
