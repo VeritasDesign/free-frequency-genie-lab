@@ -1,0 +1,153 @@
+name: Cybertron Factory role worker v0.1 — Vercel readback repair
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  factory-repair:
+    if: >
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == 'github-actions[bot]' &&
+      startsWith(github.event.comment.body, 'CYBERTRON_ROLE_RECEIPT_V0.1 ')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cybertron-factory-role-${{ github.event.issue.number }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Validate exact routed Factory order
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
+            let r=null;
+            try { r=JSON.parse(context.payload.comment.body.slice(prefix.length)); } catch {}
+            const exact = r &&
+              context.payload.issue.number===39 &&
+              context.payload.issue.state==='open' &&
+              context.payload.issue.user?.login==='VeritasDesign' &&
+              context.payload.issue.title==='FACTORY — Repair Cybertron Vercel deploy→readback seam' &&
+              r.version==='0.1' &&
+              r.status==='ROUTED' &&
+              r.id==='CYB-ROLE-039' &&
+              r.role==='FACTORY' &&
+              r.task_class==='source-repair' &&
+              r.authority==='bounded-write' &&
+              r.production_write===false &&
+              r.deploy===false &&
+              r.execution_authority==='NONE';
+            if(!exact){
+              core.info('FACTORY_ROLE_WORKER_SKIP nonmatching routed receipt');
+              core.setOutput('matched','false');
+              return;
+            }
+            const comments=await github.paginate(github.rest.issues.listComments,{
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:39,per_page:100
+            });
+            const prior=comments.filter(c=>c.user?.login==='github-actions[bot]' &&
+              c.body?.startsWith('FACTORY_REPAIR_RECEIPT_V0.1 '));
+            if(prior.length){
+              core.info('FACTORY_ROLE_WORKER_TERMINAL_SKIP existing receipt');
+              core.setOutput('matched','false');
+              return;
+            }
+            core.setOutput('matched','true');
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:39,
+              body:'FACTORY_REPAIR_STATUS_V0.1 '+JSON.stringify({
+                id:'CYB-ROLE-039',status:'CLAIMED',run:context.runId,
+                production_write:false,deploy:false
+              })
+            });
+
+      - name: Checkout trusted main
+        if: steps.validate.outputs.matched == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Verify exact adapter baseline
+        if: steps.validate.outputs.matched == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:lab/release_adapter/adapter_repaired.py)" = "de1042f665c687e809db87c3e1411566d0c668e3"
+          test ! -e lab/release_adapter/test_deployment_polling.py
+
+      - name: Apply fixed readback repair
+        if: steps.validate.outputs.matched == 'true'
+        run: python3 .github/scripts/factory-vercel-readback-repair-v01.py
+
+      - name: Run focused nondeploying tests
+        if: steps.validate.outputs.matched == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v             lab.release_adapter.test_serverless_readback             lab.release_adapter.test_deployment_polling
+
+      - name: Verify bounded changed paths
+        if: steps.validate.outputs.matched == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git status --porcelain | awk '{print $2}')"
+          test -n "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -Ev '^(lab/release_adapter/adapter_repaired.py|lab/release_adapter/test_deployment_polling.py)$' || true)"
+          test -z "$forbidden"
+
+      - name: Commit isolated repair candidate
+        if: steps.validate.outputs.matched == 'true'
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=factory-vercel-readback-repair-v01
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "BLOCKED: target repair branch already exists"
+            exit 92
+          fi
+          git switch -c "$branch"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lab/release_adapter/adapter_repaired.py lab/release_adapter/test_deployment_polling.py
+          git diff --cached --name-only | grep -Ev '^(lab/release_adapter/adapter_repaired.py|lab/release_adapter/test_deployment_polling.py)$' && exit 93 || true
+          git commit -m "factory: repair Vercel deploy readback polling"
+          git push origin HEAD:"$branch"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Return Factory repair receipt
+        if: steps.validate.outputs.matched == 'true' && steps.commit.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        with:
+          script: |
+            const receipt={
+              id:'CYB-ROLE-039',
+              status:'COMPLETE',
+              task_class:'source-repair',
+              branch:'factory-vercel-readback-repair-v01',
+              commit_sha:process.env.COMMIT_SHA,
+              changed_files:[
+                'lab/release_adapter/adapter_repaired.py',
+                'lab/release_adapter/test_deployment_polling.py'
+              ],
+              tests:'8 focused unittest cases PASS',
+              behavior:'deploy once; bounded poll exact attempted deployment; READY required; terminal/mismatch/timeout fail closed',
+              production_write:false,
+              deploy:false,
+              live_release_performed:false,
+              next_gate:'one separately authorized isolated/nonproduction live proof',
+              run:context.runId
+            };
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:39,
+              body:'FACTORY_REPAIR_RECEIPT_V0.1 '+JSON.stringify(receipt)
+            });
