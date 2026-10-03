@@ -1,0 +1,135 @@
+name: Cybertron Vercel Git disconnect pilot v0.1
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  disconnect-connection-field:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL GIT PILOT] connection-field-instrument v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 8
+    steps:
+      - name: Install Vercel CLI
+        run: |
+          set -euo pipefail
+          npm install --global vercel@latest --silent >/dev/null 2>&1
+          vercel --version > "$RUNNER_TEMP/vercel-version.txt"
+
+      - name: Verify exact project, disconnect Git, verify link removed
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          export PROJECT_ID='prj_Fw5ajxndKKfzpbDSYLTi7zWmbR2Z'
+          export PROJECT_NAME='connection-field-instrument'
+          export TEAM_ID='team_6lvKuv1CthbbshHpQoleqR2R'
+          export TEAM_SLUG='thebishco-6074s-projects'
+          export EXPECTED_ROOT='apps/connection-field-instrument'
+          export EXPECTED_REPO='free-frequency-factory'
+          export EXPECTED_ORG='VeritasDesign'
+          export RECEIPT="$RUNNER_TEMP/vercel-git-disconnect.json"
+
+          python3 - <<'PY'
+          import json, os
+          from urllib import parse, request
+          pid=os.environ['PROJECT_ID']; tid=os.environ['TEAM_ID']
+          token=os.environ['VERCEL_TOKEN']
+          url='https://api.vercel.com/v9/projects/'+pid+'?'+parse.urlencode({'teamId':tid})
+          req=request.Request(url,method='GET',headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+          with request.urlopen(req,timeout=20) as r:
+              data=json.load(r)
+          assert data.get('id')==pid
+          assert data.get('name')==os.environ['PROJECT_NAME']
+          assert data.get('accountId')==tid
+          assert data.get('rootDirectory')==os.environ['EXPECTED_ROOT']
+          link=data.get('link')
+          assert isinstance(link,dict)
+          assert link.get('type')=='github'
+          assert link.get('repo')==os.environ['EXPECTED_REPO']
+          assert link.get('org')==os.environ['EXPECTED_ORG']
+          prior={
+              'type':link.get('type'),
+              'repo':link.get('repo'),
+              'org':link.get('org'),
+              'productionBranch':link.get('productionBranch'),
+              'rootDirectory':data.get('rootDirectory'),
+          }
+          open(os.environ['RUNNER_TEMP']+'/prior-link.json','w').write(json.dumps(prior,sort_keys=True))
+          PY
+
+          mkdir -p "$RUNNER_TEMP/vercel-link"
+          cd "$RUNNER_TEMP/vercel-link"
+          vercel link --yes --project "$PROJECT_ID" --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
+
+          python3 - <<'PY'
+          import json, os
+          data=json.load(open(os.environ['RUNNER_TEMP']+'/vercel-link/.vercel/project.json'))
+          assert data.get('projectId')==os.environ['PROJECT_ID']
+          assert data.get('orgId')==os.environ['TEAM_ID']
+          PY
+
+          vercel git disconnect --yes --scope "$TEAM_SLUG" --token "$VERCEL_TOKEN" >/dev/null
+
+          python3 - <<'PY'
+          import json, os
+          from urllib import parse, request
+          pid=os.environ['PROJECT_ID']; tid=os.environ['TEAM_ID']
+          token=os.environ['VERCEL_TOKEN']
+          url='https://api.vercel.com/v9/projects/'+pid+'?'+parse.urlencode({'teamId':tid})
+          req=request.Request(url,method='GET',headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+          with request.urlopen(req,timeout=20) as r:
+              data=json.load(r)
+          assert data.get('id')==pid
+          assert data.get('name')==os.environ['PROJECT_NAME']
+          assert data.get('accountId')==tid
+          assert data.get('rootDirectory')==os.environ['EXPECTED_ROOT']
+          assert not isinstance(data.get('link'),dict)
+          prior=json.load(open(os.environ['RUNNER_TEMP']+'/prior-link.json'))
+          version=open(os.environ['RUNNER_TEMP']+'/vercel-version.txt').read().strip()
+          receipt={
+              'status':'COMPLETE',
+              'capability':'vercel_git_disconnect_pilot_v0.1',
+              'project_id':pid,
+              'project_name':data.get('name'),
+              'rootDirectory':data.get('rootDirectory'),
+              'prior_link':prior,
+              'current_link':None,
+              'vercel_cli_version':version,
+              'git_connection_mutations':1,
+              'deployments':0,
+              'production_alias_changes':0,
+              'domain_changes':0,
+          }
+          open(os.environ['RECEIPT'],'w').write(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - name: Publish sanitized pilot receipt
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RECEIPT_PATH: ${{ runner.temp }}/vercel-git-disconnect.json
+        with:
+          script: |
+            const fs=require('fs');
+            let receipt;
+            try { receipt=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8')); }
+            catch { receipt={status:'BLOCKED',capability:'vercel_git_disconnect_pilot_v0.1'}; }
+            receipt.workflow_run=context.runId;
+            receipt.source_commit=context.sha;
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,
+              repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'CYBERTRON_VERCEL_GIT_DISCONNECT_PILOT_V0.1 '+JSON.stringify(receipt)
+            });
