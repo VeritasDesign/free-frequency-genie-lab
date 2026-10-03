@@ -19,6 +19,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Protocol
 from urllib import error, parse, request
 from zipfile import ZipFile
@@ -226,6 +227,38 @@ def preflight_project(provider, profile: dict) -> dict:
     return {'previous_deployment_id': before['id']}
 
 
+READBACK_POLL_DELAYS = (1, 2, 4, 8, 12)
+READBACK_SLEEP = time.sleep
+READBACK_TRANSIENT_STATES = frozenset({'QUEUED', 'BUILDING', 'INITIALIZING'})
+READBACK_TERMINAL_STATES = frozenset({'ERROR', 'CANCELED'})
+
+
+def wait_for_ready_deployment(provider, profile: dict, deployment_url: str) -> dict:
+    """Poll one exact attempted deployment; never trigger another deploy."""
+    attempts = len(READBACK_POLL_DELAYS) + 1
+    for attempt in range(attempts):
+        try:
+            deployment = normalize_deployment(
+                provider.get_deployment(profile, deployment_url))
+        except ReleaseBlocked as exc:
+            if str(exc) != 'vercel_readback_unavailable':
+                raise
+        else:
+            if deployment.get('projectId') != profile['project_id']:
+                raise ReleaseBlocked('deployment_project_identity_mismatch')
+            state = deployment.get('state')
+            if state == 'READY':
+                return deployment
+            if state in READBACK_TERMINAL_STATES:
+                raise ReleaseBlocked('deployment_terminal_state_' + state.lower())
+            if state not in READBACK_TRANSIENT_STATES:
+                raise ReleaseBlocked('deployment_state_unexpected')
+        if attempt == attempts - 1:
+            break
+        READBACK_SLEEP(READBACK_POLL_DELAYS[attempt])
+    raise ReleaseBlocked('deployment_readback_timeout')
+
+
 def publish(profile: dict, bundle: dict, provider, approval: dict) -> dict:
     """Exactly one attempted deployment; no retry, promotion or rollback mutation."""
     if not profile['release_enabled']:
@@ -267,7 +300,7 @@ def publish(profile: dict, bundle: dict, provider, approval: dict) -> dict:
         try:
             if not DEPLOYMENT_URL.fullmatch(deployment_url):
                 raise ReleaseBlocked('deployment_url_invalid')
-            deployment = normalize_deployment(provider.get_deployment(profile, deployment_url))
+            deployment = wait_for_ready_deployment(provider, profile, deployment_url)
             aliases = deployment.get('alias') or []
             if (deployment.get('projectId') != profile['project_id'] or
                     deployment.get('state') != 'READY' or
