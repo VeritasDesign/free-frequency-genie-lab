@@ -56,7 +56,7 @@ def read_project(project_id: str, team_id: str) -> dict:
 
 
 def assert_project_matches(project: dict, project_id: str, team_id: str,
-                           name: str, root: str) -> None:
+                           name: str, root: str | None) -> None:
     if (project.get('id') != project_id or project.get('name') != name or
             project.get('accountId') != team_id):
         raise ReadbackBlocked('vercel_project_identity_mismatch')
@@ -69,18 +69,23 @@ def main(argv=None) -> int:
     p.add_argument('--project-id', required=True)
     p.add_argument('--team-id', required=True)
     p.add_argument('--expected-name', required=True)
-    p.add_argument('--expected-root', required=True)
+    root = p.add_mutually_exclusive_group(required=True)
+    root.add_argument('--expected-root')
+    root.add_argument('--expected-project-root', action='store_true')
     p.add_argument('--receipt-file', required=True, type=Path)
     args = p.parse_args(argv)
+    expected_root = None if args.expected_project_root else args.expected_root
+    root_mode = 'project-root' if args.expected_project_root else 'subdirectory'
     receipt = {'capability': 'vercel_project_metadata_read_only_v0.1',
                'status': 'BLOCKED', 'method': 'GET',
                'endpoint': '/v9/projects/{projectId}',
-               'project_id': args.project_id, 'expected_root': args.expected_root}
+               'project_id': args.project_id, 'root_mode': root_mode,
+               'expected_root': expected_root}
     exit_code = 2
     try:
         project = read_project(args.project_id, args.team_id)
         assert_project_matches(project, args.project_id, args.team_id,
-                               args.expected_name, args.expected_root)
+                               args.expected_name, expected_root)
         receipt.update(status='READY', project=project,
                        root_verified=True, credential_boundary='github_actions_environment',
                        vercel_write_operations=0)
