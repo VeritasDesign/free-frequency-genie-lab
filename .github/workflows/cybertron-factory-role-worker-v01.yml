@@ -1,8 +1,9 @@
 name: Cybertron Factory role worker v0.1 — Vercel readback repair
 
 on:
-  issue_comment:
-    types: [created]
+  workflow_run:
+    workflows: ["Cybertron role router v0.1"]
+    types: [completed]
 
 permissions:
   issues: write
@@ -11,12 +12,12 @@ permissions:
 jobs:
   factory-repair:
     if: >
-      github.event.issue.pull_request == null &&
-      github.event.comment.user.login == 'github-actions[bot]' &&
-      startsWith(github.event.comment.body, 'CYBERTRON_ROLE_RECEIPT_V0.1 ')
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'issues' &&
+      github.event.workflow_run.display_title == 'FACTORY — Repair Cybertron Vercel deploy→readback seam'
     runs-on: ubuntu-latest
     concurrency:
-      group: cybertron-factory-role-${{ github.event.issue.number }}
+      group: cybertron-factory-role-${{ github.event.workflow_run.id }}
       cancel-in-progress: false
 
     steps:
@@ -26,30 +27,45 @@ jobs:
         with:
           script: |
             const prefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
-            let r=null;
-            try { r=JSON.parse(context.payload.comment.body.slice(prefix.length)); } catch {}
-            const exact = r &&
-              context.payload.issue.number===39 &&
-              context.payload.issue.state==='open' &&
-              context.payload.issue.user?.login==='VeritasDesign' &&
-              context.payload.issue.title==='FACTORY — Repair Cybertron Vercel deploy→readback seam' &&
-              r.version==='0.1' &&
-              r.status==='ROUTED' &&
-              r.id==='CYB-ROLE-039' &&
-              r.role==='FACTORY' &&
-              r.task_class==='source-repair' &&
-              r.authority==='bounded-write' &&
-              r.production_write===false &&
-              r.deploy===false &&
-              r.execution_authority==='NONE';
-            if(!exact){
-              core.info('FACTORY_ROLE_WORKER_SKIP nonmatching routed receipt');
+            const routerRun=context.payload.workflow_run.id;
+            const issue=(await github.rest.issues.get({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:39
+            })).data;
+            if(issue.state!=='open' ||
+               issue.user?.login!=='VeritasDesign' ||
+               issue.title!=='FACTORY — Repair Cybertron Vercel deploy→readback seam'){
+              core.info('FACTORY_ROLE_WORKER_SKIP issue identity/state mismatch');
               core.setOutput('matched','false');
               return;
             }
             const comments=await github.paginate(github.rest.issues.listComments,{
               owner:context.repo.owner,repo:context.repo.repo,issue_number:39,per_page:100
             });
+            let routed=null;
+            for(const c of comments){
+              if(c.user?.login!=='github-actions[bot]' || !c.body?.startsWith(prefix)) continue;
+              try {
+                const parsed=JSON.parse(c.body.slice(prefix.length));
+                if(parsed.router_run===routerRun) routed=parsed;
+              } catch {}
+            }
+            const exact = routed &&
+              routed.version==='0.1' &&
+              routed.status==='ROUTED' &&
+              routed.id==='CYB-ROLE-039' &&
+              routed.issue_number===39 &&
+              routed.role==='FACTORY' &&
+              routed.task_class==='source-repair' &&
+              routed.scope==='Repair only the Vercel deploy-to-readback verification seam' &&
+              routed.authority==='bounded-write' &&
+              routed.production_write===false &&
+              routed.deploy===false &&
+              routed.execution_authority==='NONE';
+            if(!exact){
+              core.info('FACTORY_ROLE_WORKER_SKIP no exact receipt for triggering router run');
+              core.setOutput('matched','false');
+              return;
+            }
             const prior=comments.filter(c=>c.user?.login==='github-actions[bot]' &&
               c.body?.startsWith('FACTORY_REPAIR_RECEIPT_V0.1 '));
             if(prior.length){
@@ -61,7 +77,7 @@ jobs:
             await github.rest.issues.createComment({
               owner:context.repo.owner,repo:context.repo.repo,issue_number:39,
               body:'FACTORY_REPAIR_STATUS_V0.1 '+JSON.stringify({
-                id:'CYB-ROLE-039',status:'CLAIMED',run:context.runId,
+                id:'CYB-ROLE-039',status:'CLAIMED',router_run:routerRun,run:context.runId,
                 production_write:false,deploy:false
               })
             });
@@ -90,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest -v             lab.release_adapter.test_serverless_readback             lab.release_adapter.test_deployment_polling
+          python3 -m unittest -v lab.release_adapter.test_serverless_readback lab.release_adapter.test_deployment_polling
 
       - name: Verify bounded changed paths
         if: steps.validate.outputs.matched == 'true'
