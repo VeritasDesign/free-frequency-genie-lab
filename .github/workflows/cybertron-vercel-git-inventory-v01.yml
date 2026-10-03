@@ -1,0 +1,50 @@
+name: Cybertron Vercel Git fan-out inventory v0.1
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  inventory:
+    if: >-
+      github.event.issue.title == '[CYBERTRON VERCEL INVENTORY] Git fan-out v0.1' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-readback
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read sanitized Vercel Git configuration
+        env:
+          VERCEL_READ_TOKEN: ${{ secrets.VERCEL_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 lab/vercel_read_auth/git_inventory.py > "$RUNNER_TEMP/vercel-git-inventory.json"
+      - name: Publish sanitized inventory receipt
+        uses: actions/github-script@v7
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/vercel-git-inventory.json
+        with:
+          script: |
+            const fs=require('fs');
+            const receipt=JSON.parse(fs.readFileSync(process.env.EVIDENCE_PATH,'utf8'));
+            if(receipt.status!=='READY' || receipt.vercel_write_operations!==0 || receipt.deployments!==0){
+              core.setFailed('inventory receipt invalid');
+              return;
+            }
+            receipt.workflow_run=context.runId;
+            receipt.source_commit=context.sha;
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,
+              repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'CYBERTRON_VERCEL_GIT_INVENTORY_V0.1 '+JSON.stringify(receipt)
+            });
