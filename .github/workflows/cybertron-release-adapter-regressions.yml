@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'lab/release_adapter/**'
+      - 'lab/vercel_read_auth/**'
       - '.github/workflows/cybertron-release-adapter-regressions.yml'
 
 permissions:
@@ -20,4 +21,4 @@ jobs:
       - name: Run focused release-adapter regressions
         run: |
           set -euo pipefail
-          python3 -m unittest -v             lab.release_adapter.test_serverless_readback             lab.release_adapter.test_deployment_polling             lab.release_adapter.test_project_root_mode
+          python3 -m unittest -v lab.release_adapter.test_serverless_readback lab.release_adapter.test_deployment_polling lab.release_adapter.test_project_root_mode lab.vercel_read_auth.test_provider_root_mode
