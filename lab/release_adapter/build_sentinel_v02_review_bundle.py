@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 CANDIDATE_SHA256="017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956"
-AREA_SUBMIT_HOTFIX_ID="sentinel-v02-mobile-area-submit-v01"
+AREA_SUBMIT_HOTFIX_ID="sentinel-v02-mobile-area-submit-v02"
 PREFIX="sentinel-v02-transport-only/"
 RUNTIME_FILES=(
     "index.html",
@@ -32,20 +32,20 @@ def safe(name: str) -> None:
         raise SystemExit("unsafe_zip_path")
 
 def apply_area_submit_hotfix(blob: bytes) -> bytes:
-    """Prevent native GET form reload and route the area button through the app state machine."""
+    """Bind the weather-area control directly after each render, with a submit fallback."""
     text=blob.decode("utf-8")
     replacements=(
         (
             '<button class="primary" type="submit">Use this weather area</button>',
-            '<button class="primary" type="button" data-set-area>Use this weather area</button>',
+            '<button class="primary" type="button" data-set-area>Set area & check NWS</button>',
         ),
         (
             "document.addEventListener('submit',e=>{if(e.target.id!=='area-form')return;e.preventDefault();const fd=new FormData(e.target),id=String(fd.get('id')||'').trim().toUpperCase(),type=String(fd.get('type')),label=String(fd.get('label')||'Weather area').trim()||'Weather area';if(!/^[A-Z]{2}[CZ][0-9]{3}$/.test(id)){state.nws={...state.nws,status:'error',error:'Enter an official 6-character NWS county/forecast zone ID.'};return render()}refreshNws({id,type,label,version:state.nws.area?.version||0})});",
-            "function commitArea(form){const fd=new FormData(form),id=String(fd.get('id')||'').trim().toUpperCase(),type=String(fd.get('type')),label=String(fd.get('label')||'Weather area').trim()||'Weather area';if(!/^[A-Z]{2}[CZ][0-9]{3}$/.test(id)){state.nws={...state.nws,status:'error',error:'Enter an official 6-character NWS county/forecast zone ID.'};return render()}return refreshNws({id,type,label,version:state.nws.area?.version||0})}document.addEventListener('submit',e=>{if(e.target.id!=='area-form')return;e.preventDefault();commitArea(e.target)});",
+            "function commitArea(form){const fd=new FormData(form),id=String(fd.get('id')||'').trim().toUpperCase(),type=String(fd.get('type')),label=String(fd.get('label')||'Weather area').trim()||'Weather area';if(!/^[A-Z]{2}[CZ][0-9]{3}$/.test(id)){state.nws={...state.nws,status:'error',error:'Enter an official 6-character NWS county/forecast zone ID.'};return render()}return refreshNws({id,type,label,version:state.nws.area?.version||0})}function wireAreaForm(){const form=document.querySelector('#area-form');if(!form)return;const button=form.querySelector('[data-set-area]');if(button)button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();commitArea(form)},{once:true});form.addEventListener('submit',e=>{e.preventDefault();e.stopPropagation();commitArea(form)},{once:true})}document.addEventListener('submit',e=>{if(e.target.id!=='area-form')return;e.preventDefault();commitArea(e.target)});",
         ),
         (
-            "document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.nav)",
-            "document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-set-area')){e.preventDefault();const form=b.closest('form');if(form?.id==='area-form')return commitArea(form)}if(b.dataset.nav)",
+            "function render(){nav();if(state.investigation){const e=allEvents().find(x=>x.id===state.investigation);main.innerHTML=e?.origin==='real'?explainReal(e):explainSample(e);return}main.innerHTML=state.view==='home'?home():state.view==='explore'?explore():state.view==='dontmiss'?dontmiss():places()}",
+            "function render(){nav();if(state.investigation){const e=allEvents().find(x=>x.id===state.investigation);main.innerHTML=e?.origin==='real'?explainReal(e):explainSample(e);return}main.innerHTML=state.view==='home'?home():state.view==='explore'?explore():state.view==='dontmiss'?dontmiss():places();wireAreaForm()}",
         ),
     )
     for old,new in replacements:
