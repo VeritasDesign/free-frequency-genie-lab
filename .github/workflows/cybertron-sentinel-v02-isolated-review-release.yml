@@ -144,14 +144,16 @@ jobs:
           assert plan['source_revision']==os.environ['GITHUB_SHA']
           assert len(plan['public_alias_readback_sha256'])==11
           assert build['candidate_sha256']=='017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956'
-          assert build['hotfix_id']=='sentinel-v02-mobile-area-submit-v01'
+          assert build['hotfix_id']=='sentinel-v02-mobile-area-submit-v02'
           import zipfile
           bundle=pathlib.Path(os.environ['RUNNER_TEMP'],'sentinel-v02-review-release.zip')
           with zipfile.ZipFile(bundle) as z: app=z.read('src/app.js').decode('utf-8')
-          assert 'type="button" data-set-area' in app
+          assert 'type="button" data-set-area>Set area & check NWS</button>' in app
           assert 'function commitArea(form)' in app
-          assert "b.hasAttribute('data-set-area')" in app
-          print('SENTINEL_PLAN_ONLY=READY; area_submit_hotfix=PASS; mutations=0')
+          assert 'function wireAreaForm()' in app
+          assert "button.addEventListener('click'" in app
+          assert 'wireAreaForm()' in app
+          print('SENTINEL_PLAN_ONLY=READY; area_submit_hotfix_v02=PASS; mutations=0')
           PY
 
       - name: Install pinned Vercel CLI and preflight protected review read
