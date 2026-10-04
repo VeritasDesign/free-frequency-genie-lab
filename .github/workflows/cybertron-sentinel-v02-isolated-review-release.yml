@@ -129,8 +129,8 @@ jobs:
           SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
           BUNDLE="$RUNNER_TEMP/sentinel-v02-review-release.zip"
           PROFILE='lab/release_adapter/profiles/sentinel_v02_review_release.json'
-          SOURCE_REV='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
-          python3 lab/release_adapter/build_sentinel_v02_review_bundle.py             --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV"             > "$RUNNER_TEMP/bundle-receipt.json"
+          SOURCE_REV="$GITHUB_SHA"
+          python3 lab/release_adapter/build_sentinel_v02_review_bundle.py             --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV" --area-submit-hotfix             > "$RUNNER_TEMP/bundle-receipt.json"
           python3 lab/release_adapter/adapter_repaired.py             --profile "$PROFILE" --artifact "$BUNDLE"             > "$RUNNER_TEMP/plan.json"
           python3 - <<'PY'
           import json,os,pathlib
@@ -141,10 +141,17 @@ jobs:
           assert plan['project_name']=='free-frequency-sentinel-v02-review'
           assert plan['root_mode']=='project-root' and plan['required_root'] is None
           assert plan['alias']=='project-nfaik.vercel.app'
-          assert plan['source_revision']=='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
+          assert plan['source_revision']==os.environ['GITHUB_SHA']
           assert len(plan['public_alias_readback_sha256'])==11
           assert build['candidate_sha256']=='017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956'
-          print('SENTINEL_PLAN_ONLY=READY; mutations=0')
+          assert build['hotfix_id']=='sentinel-v02-mobile-area-submit-v01'
+          import zipfile
+          bundle=pathlib.Path(os.environ['RUNNER_TEMP'],'sentinel-v02-review-release.zip')
+          with zipfile.ZipFile(bundle) as z: app=z.read('src/app.js').decode('utf-8')
+          assert 'type="button" data-set-area' in app
+          assert 'function commitArea(form)' in app
+          assert "b.hasAttribute('data-set-area')" in app
+          print('SENTINEL_PLAN_ONLY=READY; area_submit_hotfix=PASS; mutations=0')
           PY
 
       - name: Install pinned Vercel CLI and preflight protected review read
@@ -350,6 +357,7 @@ jobs:
             'public_byte_readbacks':len(readback),
             'public_bytes_match':True,
             'candidate_tests':'PASS',
+            'hotfix_id':build.get('hotfix_id'),
             'nws_smoke':nws,
             'production_free_frequency_projects_modified':False,
             'other_project_deploy_requests':0,
