@@ -282,7 +282,7 @@ jobs:
           PY
           while IFS=$'\t' read -r dest route; do
             mkdir -p "$RUNNER_TEMP/readback/$(dirname "$dest")"
-            vercel --cwd "$RUNNER_TEMP/sentinel-stage" curl "$route" --deployment "$DEPLOYMENT_URL" > "$RUNNER_TEMP/readback/$dest"
+            (cd "$RUNNER_TEMP/sentinel-stage" && vercel curl "$route" --deployment "$DEPLOYMENT_URL") > "$RUNNER_TEMP/readback/$dest"
           done < "$RUNNER_TEMP/readback-map.tsv"
 
           python3 - <<'PY'
@@ -308,7 +308,7 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
         run: |
           set -euo pipefail
-          vercel --cwd "$RUNNER_TEMP/sentinel-stage" curl '/api/nws?op=zone&type=county&id=MIC111' --deployment "$DEPLOYMENT_URL" > "$RUNNER_TEMP/nws-smoke.json"
+          (cd "$RUNNER_TEMP/sentinel-stage" && vercel curl '/api/nws?op=zone&type=county&id=MIC111' --deployment "$DEPLOYMENT_URL") > "$RUNNER_TEMP/nws-smoke.json"
           python3 - <<'PY'
           import json,os,pathlib
           r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'nws-smoke.json').read_text())
