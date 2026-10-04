@@ -32,13 +32,13 @@ jobs:
           SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
           BUNDLE="$RUNNER_TEMP/sentinel-v02-review-release.zip"
           PROFILE='lab/release_adapter/profiles/sentinel_v02_review_release.json'
-          SOURCE_REV='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
+          SOURCE_REV='d626aad6e524256c3804f89559ef35c214bff068'
           python3 lab/release_adapter/reconstruct_sentinel_v02_candidate.py \
             --chunks-dir lab/release_adapter/sources/sentinel_v02_candidate_chunks \
             --output "$SOURCE" > "$RUNNER_TEMP/source-reconstruct.json"
           echo '017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956  '"$SOURCE" | sha256sum -c -
           python3 lab/release_adapter/build_sentinel_v02_review_bundle.py \
-            --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV" \
+            --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV" --area-submit-hotfix \
             > "$RUNNER_TEMP/bundle-receipt.json"
           python3 lab/release_adapter/adapter_repaired.py \
             --profile "$PROFILE" --artifact "$BUNDLE" \
@@ -52,9 +52,10 @@ jobs:
           assert p['project_id']=='prj_uvtbH5rwo6sW0hmCx4tEVckXljo7'
           assert p['root_mode']=='project-root' and p['required_root'] is None
           assert p['alias']=='project-nfaik.vercel.app'
-          assert p['source_revision']=='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
+          assert p['source_revision']=='d626aad6e524256c3804f89559ef35c214bff068'
           assert len(p['public_alias_readback_sha256'])==11
           assert b['candidate_sha256']=='017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956'
+          assert b['hotfix_id']=='sentinel-v02-mobile-area-submit-v01'
           PY
 
       - name: Verify exact existing deployment identity
@@ -64,8 +65,8 @@ jobs:
           set -euo pipefail
           export TEAM_ID='team_6lvKuv1CthbbshHpQoleqR2R'
           export PROJECT_ID='prj_uvtbH5rwo6sW0hmCx4tEVckXljo7'
-          export DEPLOYMENT_ID='dpl_HYpnX5mVrsQCHskFqSoL2Zk9ck9v'
-          export DEPLOYMENT_HOST='free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app'
+          export DEPLOYMENT_ID='dpl_7XyvUFTs8aQ6gv6z5bA21CqYHaPa'
+          export DEPLOYMENT_HOST='free-frequency-sentinel-v02-review-1qobf2im4.vercel.app'
           export EXPECTED_ALIAS='project-nfaik.vercel.app'
           python3 - <<'PY'
           import json, os, pathlib
@@ -136,7 +137,7 @@ jobs:
           while IFS=$'\t' read -r dest route; do
             mkdir -p "$ACTUAL/$(dirname "$dest")"
             cd "$RUNNER_TEMP/sentinel-verify-link"
-            vercel curl "$route" --deployment free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app > "$ACTUAL/$dest"
+            vercel curl "$route" --deployment free-frequency-sentinel-v02-review-1qobf2im4.vercel.app > "$ACTUAL/$dest"
             cmp -s "$EXPECTED/$dest" "$ACTUAL/$dest" || {
               echo "public_byte_mismatch:$dest" > "$RUNNER_TEMP/failure-reason.txt"
               exit 1
@@ -153,7 +154,7 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/sentinel-verify-link"
           vercel curl '/api/nws?op=zone&type=county&id=MIC111' \
-            --deployment free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app \
+            --deployment free-frequency-sentinel-v02-review-1qobf2im4.vercel.app \
             > "$RUNNER_TEMP/nws-smoke.json"
           python3 - <<'PY'
           import json, os, pathlib
@@ -197,7 +198,8 @@ jobs:
             'deployment_url':'https://'+dep['url'],
             'public_byte_readbacks':count,
             'public_bytes_match':True,
-            'candidate_tests_evidence_run':37169938051,
+            'candidate_tests_evidence_run':37171028661,
+            'hotfix_id':build.get('hotfix_id'),
             'nws_smoke':nws,
             'verification_deployments':0,
             'original_release_deployment_attempts':1,
