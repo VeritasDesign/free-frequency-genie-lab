@@ -1,0 +1,61 @@
+{
+  "candidate_filename": "FREE_FREQUENCY_SENTINEL_V02_ONE_REAL_SIGNAL_CANDIDATE_2026-10-03.zip",
+  "candidate_sha256": "017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956",
+  "candidate_bytes": 47093,
+  "base64_bytes": 62792,
+  "source_revision": "8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd",
+  "encoding": "base64",
+  "chunk_order": [
+    "part000.b64",
+    "part001.b64",
+    "part002.b64",
+    "part003.b64",
+    "part004.b64",
+    "part005.b64",
+    "part006.b64",
+    "part007.b64"
+  ],
+  "chunks": [
+    {
+      "name": "part000.b64",
+      "bytes": 8000,
+      "sha256": "bf5c60068080d6aef7d9a1beecd0ed6b5d8aefffb08c786924bdc2f595aa7c4c"
+    },
+    {
+      "name": "part001.b64",
+      "bytes": 8000,
+      "sha256": "05ed8067baa40750f55f192e2b0765a7ef2f9f780ccc22edef196a90a450be08"
+    },
+    {
+      "name": "part002.b64",
+      "bytes": 8000,
+      "sha256": "9028e448703b92cdf3242b361005268c1b24509c31b311b65b40f8c2a7bebe5f"
+    },
+    {
+      "name": "part003.b64",
+      "bytes": 8000,
+      "sha256": "a586ff7e717e4af9e33df38fa7a83e25392f623e83f8e79c3f335acbc63ac36e"
+    },
+    {
+      "name": "part004.b64",
+      "bytes": 8000,
+      "sha256": "377cad9f1d19c4d6a7a492e66221ae5084132459a7180cba2442e0fd2527cb93"
+    },
+    {
+      "name": "part005.b64",
+      "bytes": 8000,
+      "sha256": "aac411eb31658dcc00f73a4cd57aad8d0ea039a276a009dff82df4e6c60cd627"
+    },
+    {
+      "name": "part006.b64",
+      "bytes": 8000,
+      "sha256": "58d4dce8fa680495b14cd5a8ca0cee718599ff0f7c8ddbd3c00430b94e550fa4"
+    },
+    {
+      "name": "part007.b64",
+      "bytes": 6792,
+      "sha256": "f1f16929b4967825df21009808eaee9c4db5999e8fa7a2311364c48ab69cff54"
+    }
+  ],
+  "note": "Chunks are exact text encoding of the candidate ZIP verified against the source candidate before repository ingestion. Reconstruct strictly in listed order and verify candidate_sha256 before use."
+}

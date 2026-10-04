@@ -94,18 +94,21 @@ jobs:
             'rootDirectory':None,
           }
           PY
-          SOURCE='lab/release_adapter/sources/FREE_FREQUENCY_SENTINEL_V02_ONE_REAL_SIGNAL_CANDIDATE_2026-10-03.zip'
+          SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
+          python3 lab/release_adapter/reconstruct_sentinel_v02_candidate.py \
+            --chunks-dir lab/release_adapter/sources/sentinel_v02_candidate_chunks \
+            --output "$SOURCE" > "$RUNNER_TEMP/source-reconstruct.json"
           echo '017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956  '"$SOURCE" | sha256sum -c -
 
       - name: Run the candidate's accepted focused test contract
         run: |
           set -euo pipefail
-          SOURCE='lab/release_adapter/sources/FREE_FREQUENCY_SENTINEL_V02_ONE_REAL_SIGNAL_CANDIDATE_2026-10-03.zip'
+          SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
           rm -rf "$RUNNER_TEMP/candidate"
           mkdir -p "$RUNNER_TEMP/candidate"
           python3 - <<'PY'
           import os, pathlib, zipfile
-          source=pathlib.Path('lab/release_adapter/sources/FREE_FREQUENCY_SENTINEL_V02_ONE_REAL_SIGNAL_CANDIDATE_2026-10-03.zip')
+          source=pathlib.Path(os.environ['RUNNER_TEMP'],'sentinel-v02-source.zip')
           root=pathlib.Path(os.environ['RUNNER_TEMP'],'candidate')
           with zipfile.ZipFile(source) as z:
               for info in z.infolist():
@@ -123,10 +126,10 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          SOURCE='lab/release_adapter/sources/FREE_FREQUENCY_SENTINEL_V02_ONE_REAL_SIGNAL_CANDIDATE_2026-10-03.zip'
+          SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
           BUNDLE="$RUNNER_TEMP/sentinel-v02-review-release.zip"
           PROFILE='lab/release_adapter/profiles/sentinel_v02_review_release.json'
-          SOURCE_REV='f067591465111199c77b0972ebfe6a251a6de906'
+          SOURCE_REV='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
           python3 lab/release_adapter/build_sentinel_v02_review_bundle.py             --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV"             > "$RUNNER_TEMP/bundle-receipt.json"
           python3 lab/release_adapter/adapter_repaired.py             --profile "$PROFILE" --artifact "$BUNDLE"             > "$RUNNER_TEMP/plan.json"
           python3 - <<'PY'
@@ -138,7 +141,7 @@ jobs:
           assert plan['project_name']=='free-frequency-sentinel-v02-review'
           assert plan['root_mode']=='project-root' and plan['required_root'] is None
           assert plan['alias']=='project-nfaik.vercel.app'
-          assert plan['source_revision']=='f067591465111199c77b0972ebfe6a251a6de906'
+          assert plan['source_revision']=='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
           assert len(plan['public_alias_readback_sha256'])==11
           assert build['candidate_sha256']=='017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956'
           print('SENTINEL_PLAN_ONLY=READY; mutations=0')
