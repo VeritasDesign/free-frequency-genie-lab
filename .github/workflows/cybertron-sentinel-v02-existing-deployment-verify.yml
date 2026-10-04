@@ -1,0 +1,234 @@
+name: Cybertron Sentinel V0.2 existing deployment verification
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify-existing-deployment:
+    if: >-
+      github.event.issue.title == '[CYBERTRON SENTINEL VERIFY] existing isolated deployment v0.2' &&
+      github.actor == 'VeritasDesign' &&
+      github.event.issue.user.login == 'VeritasDesign' &&
+      github.event.repository.full_name == 'VeritasDesign/free-frequency-genie-lab'
+    runs-on: ubuntu-latest
+    environment: Cybertron-vercel-release
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Reconstruct exact candidate and canonical release bundle
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          SOURCE="$RUNNER_TEMP/sentinel-v02-source.zip"
+          BUNDLE="$RUNNER_TEMP/sentinel-v02-review-release.zip"
+          PROFILE='lab/release_adapter/profiles/sentinel_v02_review_release.json'
+          SOURCE_REV='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
+          python3 lab/release_adapter/reconstruct_sentinel_v02_candidate.py \
+            --chunks-dir lab/release_adapter/sources/sentinel_v02_candidate_chunks \
+            --output "$SOURCE" > "$RUNNER_TEMP/source-reconstruct.json"
+          echo '017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956  '"$SOURCE" | sha256sum -c -
+          python3 lab/release_adapter/build_sentinel_v02_review_bundle.py \
+            --source "$SOURCE" --output "$BUNDLE" --source-revision "$SOURCE_REV" \
+            > "$RUNNER_TEMP/bundle-receipt.json"
+          python3 lab/release_adapter/adapter_repaired.py \
+            --profile "$PROFILE" --artifact "$BUNDLE" \
+            > "$RUNNER_TEMP/plan.json"
+          python3 - <<'PY'
+          import json, os, pathlib
+          rt=pathlib.Path(os.environ['RUNNER_TEMP'])
+          p=json.loads((rt/'plan.json').read_text())
+          b=json.loads((rt/'bundle-receipt.json').read_text())
+          assert p['mode']=='PLAN_ONLY' and p['mutation_count']==0
+          assert p['project_id']=='prj_uvtbH5rwo6sW0hmCx4tEVckXljo7'
+          assert p['root_mode']=='project-root' and p['required_root'] is None
+          assert p['alias']=='project-nfaik.vercel.app'
+          assert p['source_revision']=='8eba21d8a769f8a94f3b31a9ce0a14a2188fb0dd'
+          assert len(p['public_alias_readback_sha256'])==11
+          assert b['candidate_sha256']=='017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956'
+          PY
+
+      - name: Verify exact existing deployment identity
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          export TEAM_ID='team_6lvKuv1CthbbshHpQoleqR2R'
+          export PROJECT_ID='prj_uvtbH5rwo6sW0hmCx4tEVckXljo7'
+          export DEPLOYMENT_ID='dpl_HYpnX5mVrsQCHskFqSoL2Zk9ck9v'
+          export DEPLOYMENT_HOST='free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app'
+          export EXPECTED_ALIAS='project-nfaik.vercel.app'
+          python3 - <<'PY'
+          import json, os, pathlib
+          from urllib import parse, request
+          url='https://api.vercel.com/v13/deployments/'+os.environ['DEPLOYMENT_ID']+'?'+parse.urlencode({'teamId':os.environ['TEAM_ID']})
+          req=request.Request(url,headers={'Authorization':'Bearer '+os.environ['VERCEL_TOKEN'],'Accept':'application/json'})
+          with request.urlopen(req,timeout=20) as r:
+              d=json.load(r)
+          project=d.get('project') if isinstance(d.get('project'),dict) else {}
+          pid=d.get('projectId') or project.get('id')
+          assert pid==os.environ['PROJECT_ID']
+          assert d.get('id')==os.environ['DEPLOYMENT_ID']
+          assert d.get('url')==os.environ['DEPLOYMENT_HOST']
+          assert (d.get('state') or d.get('readyState'))=='READY'
+          assert d.get('target')=='production'
+          assert os.environ['EXPECTED_ALIAS'] in (d.get('alias') or [])
+          pathlib.Path(os.environ['RUNNER_TEMP'],'deployment-verified.json').write_text(json.dumps({
+            'id':d.get('id'),'url':d.get('url'),'state':'READY','target':'production',
+            'project_id':pid,'alias':d.get('alias') or []
+          },sort_keys=True))
+          PY
+
+      - name: Link exact review project locally
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm install --global vercel@62.2.0 --silent >/dev/null 2>&1
+          mkdir -p "$RUNNER_TEMP/sentinel-verify-link"
+          cd "$RUNNER_TEMP/sentinel-verify-link"
+          vercel link --yes --project prj_uvtbH5rwo6sW0hmCx4tEVckXljo7 \
+            --scope thebishco-6074s-projects --token "$VERCEL_TOKEN" >/dev/null
+          python3 - <<'PY'
+          import json
+          d=json.load(open('.vercel/project.json'))
+          assert d.get('projectId')=='prj_uvtbH5rwo6sW0hmCx4tEVckXljo7'
+          assert d.get('orgId')=='team_6lvKuv1CthbbshHpQoleqR2R'
+          PY
+
+      - name: Verify exact public HTTP bytes without redeploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          BUNDLE="$RUNNER_TEMP/sentinel-v02-review-release.zip"
+          EXPECTED="$RUNNER_TEMP/expected-public"
+          ACTUAL="$RUNNER_TEMP/actual-public"
+          rm -rf "$EXPECTED" "$ACTUAL"
+          mkdir -p "$EXPECTED" "$ACTUAL"
+          python3 - <<'PY'
+          import json, os, pathlib, zipfile
+          bundle=pathlib.Path(os.environ['RUNNER_TEMP'],'sentinel-v02-review-release.zip')
+          profile=json.loads(pathlib.Path('lab/release_adapter/profiles/sentinel_v02_review_release.json').read_text())
+          expected=pathlib.Path(os.environ['RUNNER_TEMP'],'expected-public')
+          with zipfile.ZipFile(bundle) as z:
+              for dest in profile['readback_paths']:
+                  out=expected/dest
+                  out.parent.mkdir(parents=True,exist_ok=True)
+                  out.write_bytes(z.read(dest))
+          PY
+          python3 - <<'PY' > "$RUNNER_TEMP/readback-map.tsv"
+          import json, pathlib
+          p=json.loads(pathlib.Path('lab/release_adapter/profiles/sentinel_v02_review_release.json').read_text())
+          for dest,route in p['readback_paths'].items():
+              print(dest+'\t'+route)
+          PY
+          count=0
+          while IFS=$'\t' read -r dest route; do
+            mkdir -p "$ACTUAL/$(dirname "$dest")"
+            cd "$RUNNER_TEMP/sentinel-verify-link"
+            vercel curl "$route" --deployment free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app > "$ACTUAL/$dest"
+            cmp -s "$EXPECTED/$dest" "$ACTUAL/$dest" || {
+              echo "public_byte_mismatch:$dest" > "$RUNNER_TEMP/failure-reason.txt"
+              exit 1
+            }
+            count=$((count+1))
+          done < "$RUNNER_TEMP/readback-map.tsv"
+          test "$count" -eq 11
+          echo "$count" > "$RUNNER_TEMP/public-readback-count.txt"
+
+      - name: Verify one live NOAA NWS same-origin signal
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/sentinel-verify-link"
+          vercel curl '/api/nws?op=zone&type=county&id=MIC111' \
+            --deployment free-frequency-sentinel-v02-review-1u6ckptzk.vercel.app \
+            > "$RUNNER_TEMP/nws-smoke.json"
+          python3 - <<'PY'
+          import json, os, pathlib
+          r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'nws-smoke.json').read_text())
+          assert r.get('configuredApplicationId')=='FreeFrequencySentinel/0.2'
+          u=((r.get('upstream') or {}).get('url') or '')
+          assert u.startswith('https://api.weather.gov/zones/county/MIC111')
+          status=(r.get('upstream') or {}).get('status')
+          assert isinstance(status,int)
+          pathlib.Path(os.environ['RUNNER_TEMP'],'nws-smoke-receipt.json').write_text(json.dumps({
+            'configuredApplicationId':r.get('configuredApplicationId'),
+            'upstream_host':'api.weather.gov',
+            'operation':'zone/county/MIC111',
+            'upstream_status':status,
+            'transportVersion':r.get('transportVersion'),
+          },sort_keys=True))
+          PY
+
+      - name: Build verification receipt
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          rt=pathlib.Path(os.environ['RUNNER_TEMP'])
+          build=json.loads((rt/'bundle-receipt.json').read_text())
+          dep=json.loads((rt/'deployment-verified.json').read_text())
+          nws=json.loads((rt/'nws-smoke-receipt.json').read_text())
+          count=int((rt/'public-readback-count.txt').read_text().strip())
+          receipt={
+            'status':'READY',
+            'capability':'sentinel_v02_existing_isolated_deployment_verified_v0.1',
+            'candidate_sha256':build['candidate_sha256'],
+            'source_revision':build['source_revision'],
+            'release_bundle_sha256':build['release_bundle_sha256'],
+            'project_id':dep['project_id'],
+            'project_name':'free-frequency-sentinel-v02-review',
+            'root_mode':'project-root',
+            'root_directory':None,
+            'production_alias':'project-nfaik.vercel.app',
+            'deployment_id':dep['id'],
+            'deployment_url':'https://'+dep['url'],
+            'public_byte_readbacks':count,
+            'public_bytes_match':True,
+            'candidate_tests_evidence_run':37169938051,
+            'nws_smoke':nws,
+            'verification_deployments':0,
+            'original_release_deployment_attempts':1,
+            'production_free_frequency_projects_modified':False,
+            'other_project_deploy_requests':0,
+          }
+          (rt/'sentinel-existing-deployment-verification.json').write_text(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - name: Publish sanitized verification receipt
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RECEIPT_PATH: ${{ runner.temp }}/sentinel-existing-deployment-verification.json
+          FAILURE_PATH: ${{ runner.temp }}/failure-reason.txt
+        with:
+          script: |
+            const fs=require('fs');
+            let receipt;
+            try {
+              receipt=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8'));
+            } catch {
+              let reason='verification_step_failed';
+              try { reason=fs.readFileSync(process.env.FAILURE_PATH,'utf8').trim() || reason; } catch {}
+              receipt={status:'BLOCKED',capability:'sentinel_v02_existing_isolated_deployment_verified_v0.1',reason};
+            }
+            receipt.workflow_run=context.runId;
+            receipt.workflow_source_commit=context.sha;
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,
+              repo:context.repo.repo,
+              issue_number:context.issue.number,
+              body:'SENTINEL_V02_EXISTING_DEPLOYMENT_VERIFICATION '+JSON.stringify(receipt)
+            });
