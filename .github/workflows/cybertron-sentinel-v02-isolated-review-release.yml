@@ -168,7 +168,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/sentinel-link-check"
           cd "$RUNNER_TEMP/sentinel-link-check"
           vercel link --yes --project prj_uvtbH5rwo6sW0hmCx4tEVckXljo7             --scope thebishco-6074s-projects --token "$VERCEL_TOKEN" >/dev/null
-          vercel curl / --deployment project-nfaik.vercel.app             --scope thebishco-6074s-projects --token "$VERCEL_TOKEN"             > "$RUNNER_TEMP/current-root.html"
+          vercel curl / --deployment project-nfaik.vercel.app > "$RUNNER_TEMP/current-root.html"
           test -s "$RUNNER_TEMP/current-root.html"
 
       - name: Stage exact runtime bytes and deploy ONCE
@@ -274,7 +274,7 @@ jobs:
           PY
           while IFS=$'\t' read -r dest route; do
             mkdir -p "$RUNNER_TEMP/readback/$(dirname "$dest")"
-            vercel curl "$route" --deployment "$DEPLOYMENT_URL"               --scope thebishco-6074s-projects --token "$VERCEL_TOKEN"               > "$RUNNER_TEMP/readback/$dest"
+            vercel --cwd "$RUNNER_TEMP/sentinel-stage" curl "$route" --deployment "$DEPLOYMENT_URL" > "$RUNNER_TEMP/readback/$dest"
           done < "$RUNNER_TEMP/readback-map.tsv"
 
           python3 - <<'PY'
@@ -300,7 +300,7 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
         run: |
           set -euo pipefail
-          vercel curl '/api/nws?op=zone&type=county&id=MIC111'             --deployment "$DEPLOYMENT_URL"             --scope thebishco-6074s-projects --token "$VERCEL_TOKEN"             > "$RUNNER_TEMP/nws-smoke.json"
+          vercel --cwd "$RUNNER_TEMP/sentinel-stage" curl '/api/nws?op=zone&type=county&id=MIC111' --deployment "$DEPLOYMENT_URL" > "$RUNNER_TEMP/nws-smoke.json"
           python3 - <<'PY'
           import json,os,pathlib
           r=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'nws-smoke.json').read_text())
