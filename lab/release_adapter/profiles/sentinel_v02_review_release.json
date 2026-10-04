@@ -1,0 +1,39 @@
+{
+  "project_id": "prj_uvtbH5rwo6sW0hmCx4tEVckXljo7",
+  "project_name": "free-frequency-sentinel-v02-review",
+  "team_id": "team_6lvKuv1CthbbshHpQoleqR2R",
+  "team_slug": "thebishco-6074s-projects",
+  "root_mode": "project-root",
+  "required_root": null,
+  "production_alias": "project-nfaik.vercel.app",
+  "artifact_paths": {
+    "index.html": "index.html",
+    "styles.css": "styles.css",
+    "package.json": "package.json",
+    "vercel.json": "vercel.json",
+    "api/nws.js": "api/nws.js",
+    "lib/nws-transport.js": "lib/nws-transport.js",
+    "fixtures/events.js": "fixtures/events.js",
+    "src/app.js": "src/app.js",
+    "src/state.js": "src/state.js",
+    "src/geo.js": "src/geo.js",
+    "src/adapters/catalog.js": "src/adapters/catalog.js",
+    "src/adapters/fixture-adapter.js": "src/adapters/fixture-adapter.js",
+    "src/adapters/nws-adapter.js": "src/adapters/nws-adapter.js",
+    "src/adapters/source-adapter.js": "src/adapters/source-adapter.js"
+  },
+  "readback_paths": {
+    "index.html": "/",
+    "styles.css": "/styles.css",
+    "lib/nws-transport.js": "/lib/nws-transport.js",
+    "fixtures/events.js": "/fixtures/events.js",
+    "src/app.js": "/src/app.js",
+    "src/state.js": "/src/state.js",
+    "src/geo.js": "/src/geo.js",
+    "src/adapters/catalog.js": "/src/adapters/catalog.js",
+    "src/adapters/fixture-adapter.js": "/src/adapters/fixture-adapter.js",
+    "src/adapters/nws-adapter.js": "/src/adapters/nws-adapter.js",
+    "src/adapters/source-adapter.js": "/src/adapters/source-adapter.js"
+  },
+  "release_enabled": true
+}
