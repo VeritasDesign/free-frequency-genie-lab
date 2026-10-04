@@ -115,6 +115,7 @@ jobs:
       - name: Verify bounded candidate changes
         run: |
           set -euo pipefail
+          find lab/release_adapter .github/scripts -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
           changed="$(git status --porcelain | awk '{print $2}')"
           test -n "$changed"
           forbidden="$(printf '%s\n' "$changed" | grep -Ev '^lab/sentinel_v021_candidate/' || true)"
