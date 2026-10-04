@@ -1,0 +1,93 @@
+{
+  "base_candidate_sha256": "017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956",
+  "capabilities": [
+    "remember official weather area in browser localStorage",
+    "restore and refresh saved area on startup",
+    "real NWS alert status and last-checked time on Home",
+    "manual Refresh now control",
+    "NWS point/grid forecast derived from official zone geometry",
+    "no device geolocation"
+  ],
+  "deploy": false,
+  "factory_build_id": "sentinel-v021-make-home-real-v01",
+  "files": [
+    {
+      "bytes": 923,
+      "path": "FACTORY_TESTS.mjs",
+      "sha256": "4d62823b4a261c4b6a4fa9b8a7414b8318a9979b3552e4c4b8db553f85bef202"
+    },
+    {
+      "bytes": 1542,
+      "path": "api/nws.js",
+      "sha256": "f90c24634bc0a3b4d802c1eb4932abb55b068ca3732366b742cbed805f83b66c"
+    },
+    {
+      "bytes": 4212,
+      "path": "fixtures/events.js",
+      "sha256": "4f083bfbcd4ed5f272da4d1e4a7e05751baaaa85a532123628fb0ab5c8b2b5c6"
+    },
+    {
+      "bytes": 851,
+      "path": "index.html",
+      "sha256": "3e0a0e41292d076198c78424471a042930996e89f641f8a82f811a0390bb2442"
+    },
+    {
+      "bytes": 7092,
+      "path": "lib/nws-transport.js",
+      "sha256": "02fbf31a69ae9aa82a8dcd19ea4eb17bf50825d08191e2db07bd0b0d07eedb85"
+    },
+    {
+      "bytes": 412,
+      "path": "package.json",
+      "sha256": "8e2c6674b7be8a0fdae51ff441a695e6747aab369d6d590613641a20ce4695d6"
+    },
+    {
+      "bytes": 567,
+      "path": "src/adapters/catalog.js",
+      "sha256": "14f620cda5f2d4dc1097b814e05f40662e3fa59a187f19a308a6b40de7a7609f"
+    },
+    {
+      "bytes": 413,
+      "path": "src/adapters/fixture-adapter.js",
+      "sha256": "25c3f3e7a07659018b83aa04b0b33aee54c2556e752b45528f80b5f6353d1555"
+    },
+    {
+      "bytes": 2259,
+      "path": "src/adapters/nws-adapter.js",
+      "sha256": "88acc5c414168a6877238aafbd8beb3cd4ee6a0a116d9d494e2c1c61c1f7f166"
+    },
+    {
+      "bytes": 304,
+      "path": "src/adapters/source-adapter.js",
+      "sha256": "a86b58aaee94af43821d88ea9b83690f8be3bbe234001ff89bd0003f54928cf5"
+    },
+    {
+      "bytes": 19998,
+      "path": "src/app.js",
+      "sha256": "98e9744d8e398283146967c7927daa5c26384990de816ad0d32fb4711fcd5a67"
+    },
+    {
+      "bytes": 1188,
+      "path": "src/geo.js",
+      "sha256": "40a38ff5442f38bc8961231c6e870b3c3589dd24c81d3e6431e648b7adb84d35"
+    },
+    {
+      "bytes": 445,
+      "path": "src/state.js",
+      "sha256": "8ba9f5f5db741c3b22634d45d45c04ca7052cfb27f675055e9ec6b9d1ef04130"
+    },
+    {
+      "bytes": 6078,
+      "path": "styles.css",
+      "sha256": "334e3484ee19eccba2e397725edb71bec1fbd2a5b0271c8c2b7f1b15e94a8fb6"
+    },
+    {
+      "bytes": 178,
+      "path": "vercel.json",
+      "sha256": "2c095076359aa7abe5b24c735053dd4321af65101002a7b0eb7419032aec21df"
+    }
+  ],
+  "production_write": false,
+  "source_revision": "555184345de60406f5356de867fe869f35d7f8b0",
+  "status": "CANDIDATE_READY"
+}

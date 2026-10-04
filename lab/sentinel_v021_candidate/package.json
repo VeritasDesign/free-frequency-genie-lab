@@ -1,0 +1,11 @@
+{
+  "name": "free-frequency-sentinel-v0-candidate",
+  "private": true,
+  "version": "0.0.0-candidate",
+  "scripts": {
+    "test": "node tests/contract.test.mjs && node tests/nws-ui-contract.test.mjs && node tests/nws-transport.test.mjs && node tests/nws-handler.test.mjs",
+    "test:transport": "node tests/nws-transport.test.mjs",
+    "test:handler": "node tests/nws-handler.test.mjs"
+  },
+  "type": "module"
+}

@@ -1,0 +1,2 @@
+export const initialState={view:'home',selected:null,investigation:null,map:{x:0,y:0,zoom:1},savedMap:null,layer:'all',plane:'sample',watchState:'current',reminder:false,nws:{status:'unconfigured',error:null,area:null,zoneFeature:null,alerts:[],lastCheck:null,forecast:[],forecastError:null,forecastPoint:null}};
+export function captureMapState(s){return {map:{...s.map},selected:s.selected,layer:s.layer,plane:s.plane,scrollY:window.scrollY};}

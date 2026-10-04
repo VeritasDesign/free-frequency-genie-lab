@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/nws.js": { "maxDuration": 10 }
+  },
+  "headers": [
+    { "source": "/api/nws", "headers": [ { "key": "Cache-Control", "value": "no-store" } ] }
+  ]
+}
