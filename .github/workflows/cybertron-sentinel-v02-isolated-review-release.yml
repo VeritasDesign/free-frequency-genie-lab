@@ -235,7 +235,8 @@ jobs:
           import json,os,pathlib,time
           from urllib import parse,request,error
           token=os.environ['VERCEL_TOKEN']; team=os.environ['TEAM_ID']
-          ref=os.environ['DEPLOYMENT_URL']
+          ref=parse.urlsplit(os.environ['DEPLOYMENT_URL']).hostname
+          if not ref: raise SystemExit('deployment_url_invalid')
           delays=[0,1,2,4,8,12]
           final=None
           for delay in delays:
