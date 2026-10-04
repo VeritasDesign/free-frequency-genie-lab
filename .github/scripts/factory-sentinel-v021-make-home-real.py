@@ -2,6 +2,7 @@
 """Factory builder for Sentinel V0.2.1 Make Home Real candidate. No deploy."""
 from __future__ import annotations
 import argparse, hashlib, json, shutil, sys
+sys.dont_write_bytecode=True
 from pathlib import Path
 from zipfile import ZipFile
 
