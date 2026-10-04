@@ -1,0 +1,215 @@
+name: Cybertron Factory worker v0.1 — Sentinel V0.2.1 Make Home Real
+
+on:
+  workflow_run:
+    workflows: ["Cybertron role router v0.1"]
+    types: [completed]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  factory-sentinel-v021:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'issues' &&
+      github.event.workflow_run.display_title == 'FACTORY — Sentinel V0.2.1 Make Home Real'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    concurrency:
+      group: factory-sentinel-v021-${ github.event.workflow_run.id }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Validate exact routed Factory work order
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
+            const routerRun=context.payload.workflow_run.id;
+            const issues=await github.paginate(github.rest.issues.listForRepo,{
+              owner:context.repo.owner,repo:context.repo.repo,state:'open',per_page:100
+            });
+            const candidates=[];
+            for(const issue of issues){
+              if(issue.user?.login!=='VeritasDesign' ||
+                 issue.title!=='FACTORY — Sentinel V0.2.1 Make Home Real') continue;
+              const comments=await github.paginate(github.rest.issues.listComments,{
+                owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,per_page:100
+              });
+              for(const c of comments){
+                if(c.user?.login!=='github-actions[bot]' || !c.body?.startsWith(prefix)) continue;
+                try{
+                  const r=JSON.parse(c.body.slice(prefix.length));
+                  if(r.router_run===routerRun &&
+                     r.version==='0.1' && r.status==='ROUTED' &&
+                     r.role==='FACTORY' &&
+                     r.task_class==='sentinel-v021-make-home-real' &&
+                     r.scope==='Build isolated Sentinel V0.2.1 candidate: remember official area, real Home status, NWS forecast, last checked, manual refresh' &&
+                     r.authority==='bounded-write' &&
+                     r.production_write===false && r.deploy===false &&
+                     r.execution_authority==='NONE'){
+                    candidates.push({issue,r,comments});
+                  }
+                }catch{}
+              }
+            }
+            if(candidates.length!==1){
+              core.setFailed('FACTORY_SENTINEL_V021 exact routed work order not uniquely found');
+              return;
+            }
+            const hit=candidates[0];
+            const prior=hit.comments.some(c=>c.user?.login==='github-actions[bot]' &&
+              c.body?.startsWith('FACTORY_SENTINEL_V021_RECEIPT '));
+            if(prior){ core.setFailed('FACTORY_SENTINEL_V021 terminal receipt already exists'); return; }
+            core.setOutput('issue_number',String(hit.issue.number));
+            core.setOutput('order_id',hit.r.id);
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:hit.issue.number,
+              body:'FACTORY_SENTINEL_V021_STATUS '+JSON.stringify({
+                id:hit.r.id,status:'CLAIMED',router_run:routerRun,run:context.runId,
+                production_write:false,deploy:false
+              })
+            });
+
+      - name: Checkout trusted main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Reconstruct accepted Sentinel V0.2 base
+        run: |
+          set -euo pipefail
+          python3 lab/release_adapter/reconstruct_sentinel_v02_candidate.py \
+            --chunks-dir lab/release_adapter/sources/sentinel_v02_candidate_chunks \
+            --output "$RUNNER_TEMP/sentinel-v02-source.zip"
+          echo '017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956  '"$RUNNER_TEMP/sentinel-v02-source.zip" | sha256sum -c -
+
+      - name: Build isolated Sentinel V0.2.1 candidate
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/factory-sentinel-v021-make-home-real.py \
+            --source "$RUNNER_TEMP/sentinel-v02-source.zip" \
+            --output-dir lab/sentinel_v021_candidate \
+            --source-revision "$GITHUB_SHA" \
+            > "$RUNNER_TEMP/factory-build.json"
+
+      - name: Run bounded candidate tests
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/base"
+          mkdir -p "$RUNNER_TEMP/base"
+          python3 - <<'PY'
+          import os,pathlib,zipfile
+          z=zipfile.ZipFile(pathlib.Path(os.environ['RUNNER_TEMP'],'sentinel-v02-source.zip'))
+          z.extractall(pathlib.Path(os.environ['RUNNER_TEMP'],'base'))
+          PY
+          (cd "$RUNNER_TEMP/base/sentinel-v02-transport-only" && npm test)
+          node --check lab/sentinel_v021_candidate/src/app.js
+          node --check lab/sentinel_v021_candidate/lib/nws-transport.js
+          node --test lab/sentinel_v021_candidate/FACTORY_TESTS.mjs
+
+      - name: Verify bounded candidate changes
+        run: |
+          set -euo pipefail
+          changed="$(git status --porcelain | awk '{print $2}')"
+          test -n "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -Ev '^lab/sentinel_v021_candidate/' || true)"
+          test -z "$forbidden"
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('lab/sentinel_v021_candidate/FACTORY_BUILD_RECEIPT.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='CANDIDATE_READY'
+          assert r['factory_build_id']=='sentinel-v021-make-home-real-v01'
+          assert r['production_write'] is False and r['deploy'] is False
+          app=pathlib.Path('lab/sentinel_v021_candidate/src/app.js').read_text()
+          for marker in ['localStorage.setItem(AREA_KEY','Refresh now','NWS FORECAST · REAL','representativePoint(','nwsAdapter.point(','nwsAdapter.forecast(','wireAreaForm()']:
+              assert marker in app, marker
+          transport=pathlib.Path('lab/sentinel_v021_candidate/lib/nws-transport.js').read_text()
+          assert "op==='point'" in transport and "op==='forecast'" in transport
+          assert "api.weather.gov" in transport
+          PY
+
+      - name: Pack immutable Factory candidate
+        id: pack
+        run: |
+          set -euo pipefail
+          tar --sort=name --mtime='UTC 2026-10-04' --owner=0 --group=0 --numeric-owner \
+            -czf "$RUNNER_TEMP/sentinel-v021-make-home-real.tar.gz" lab/sentinel_v021_candidate
+          sha256sum "$RUNNER_TEMP/sentinel-v021-make-home-real.tar.gz" | tee "$RUNNER_TEMP/artifact.sha256"
+          echo "sha=$(cut -d' ' -f1 "$RUNNER_TEMP/artifact.sha256")" >> "$GITHUB_OUTPUT"
+
+      - name: Commit isolated candidate branch
+        id: commit
+        run: |
+          set -euo pipefail
+          branch='factory-sentinel-v021-make-home-real'
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "BLOCKED: candidate branch already exists"
+            exit 92
+          fi
+          git switch -c "$branch"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lab/sentinel_v021_candidate
+          git diff --cached --name-only | grep -Ev '^lab/sentinel_v021_candidate/' && exit 93 || true
+          git commit -m "factory: build Sentinel v0.2.1 Make Home Real candidate"
+          git push origin HEAD:"$branch"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload immutable candidate artifact
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-v021-make-home-real
+          path: |
+            ${ runner.temp }}/sentinel-v021-make-home-real.tar.gz
+            ${ runner.temp }}/artifact.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Return Factory candidate receipt
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${ steps.validate.outputs.issue_number }}
+          ORDER_ID: ${ steps.validate.outputs.order_id }}
+          COMMIT_SHA: ${ steps.commit.outputs.sha }}
+          ARTIFACT_SHA: ${ steps.pack.outputs.sha }}
+          ARTIFACT_DIGEST: ${ steps.artifact.outputs.artifact-digest }}
+          ARTIFACT_ID: ${ steps.artifact.outputs.artifact-id }}
+        with:
+          script: |
+            const issue_number=Number(process.env.ISSUE_NUMBER);
+            const receipt={
+              id:process.env.ORDER_ID,
+              status:'COMPLETE',
+              task_class:'sentinel-v021-make-home-real',
+              branch:'factory-sentinel-v021-make-home-real',
+              commit_sha:process.env.COMMIT_SHA,
+              base_candidate_sha256:'017e86298b32aa56c3d4c327b2db290a8c7561758640d8f9068a31bc7429f956',
+              artifact_sha256:process.env.ARTIFACT_SHA,
+              upload_artifact_digest:process.env.ARTIFACT_DIGEST,
+              artifact_id:process.env.ARTIFACT_ID,
+              features:[
+                'saved official weather area',
+                'restore and refresh on startup',
+                'real NWS Home status and last checked',
+                'manual refresh',
+                'NWS forecast via official-zone-derived representative point',
+                'no device geolocation'
+              ],
+              tests:'base npm tests + syntax checks + 4 focused V0.2.1 Node tests PASS',
+              production_write:false,
+              deploy:false,
+              live_release_performed:false,
+              next_gate:'Chief review candidate; separate isolated-review deployment authorization',
+              run:context.runId
+            };
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number,
+              body:'FACTORY_SENTINEL_V021_RECEIPT '+JSON.stringify(receipt)
+            });
