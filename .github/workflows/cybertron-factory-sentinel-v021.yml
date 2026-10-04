@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     concurrency:
-      group: factory-sentinel-v021-${ github.event.workflow_run.id }}
+      group: factory-sentinel-v021-${{ github.event.workflow_run.id }}
       cancel-in-progress: false
 
     steps:
@@ -167,20 +167,20 @@ jobs:
         with:
           name: sentinel-v021-make-home-real
           path: |
-            ${ runner.temp }}/sentinel-v021-make-home-real.tar.gz
-            ${ runner.temp }}/artifact.sha256
+            ${{ runner.temp }}/sentinel-v021-make-home-real.tar.gz
+            ${{ runner.temp }}/artifact.sha256
           if-no-files-found: error
           retention-days: 7
 
       - name: Return Factory candidate receipt
         uses: actions/github-script@v7
         env:
-          ISSUE_NUMBER: ${ steps.validate.outputs.issue_number }}
-          ORDER_ID: ${ steps.validate.outputs.order_id }}
-          COMMIT_SHA: ${ steps.commit.outputs.sha }}
-          ARTIFACT_SHA: ${ steps.pack.outputs.sha }}
-          ARTIFACT_DIGEST: ${ steps.artifact.outputs.artifact-digest }}
-          ARTIFACT_ID: ${ steps.artifact.outputs.artifact-id }}
+          ISSUE_NUMBER: ${{ steps.validate.outputs.issue_number }}
+          ORDER_ID: ${{ steps.validate.outputs.order_id }}
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+          ARTIFACT_SHA: ${{ steps.pack.outputs.sha }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
         with:
           script: |
             const issue_number=Number(process.env.ISSUE_NUMBER);
