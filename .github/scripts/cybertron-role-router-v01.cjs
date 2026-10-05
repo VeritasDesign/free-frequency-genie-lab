@@ -91,7 +91,7 @@ async function run({github, context, core}) {
   for (const c of prior) {
     try {
       const r = JSON.parse(c.body.slice(RECEIPT_PREFIX.length));
-      if (r.id === contract.id && r.contract_sha256 === digest && ['ROUTED','BLOCKED'].includes(r.status)) {
+      if (r.id === contract.id && r.contract_sha256 === digest && r.status === 'BLOCKED') {
         core.info('CYBERTRON_ROLE_ROUTER_DUPLICATE_SKIP ' + contract.id);
         return;
       }
