@@ -1,0 +1,76 @@
+name: Cybertron Factory bounded dispatcher v0.1
+
+on:
+  workflow_run:
+    workflows: ["Cybertron role router v0.1"]
+    types: [completed]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Match routed order to explicit capability
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
+            const runId=context.payload.workflow_run.id;
+            const supported=new Set([
+              'listing-agent-lifecycle',
+              'listing-agent-dynamic-item-specifics'
+            ]);
+            const issues=await github.paginate(github.rest.issues.listForRepo,{
+              owner:context.repo.owner,repo:context.repo.repo,state:'open',per_page:100
+            });
+            const matches=[];
+            for(const issue of issues){
+              if(issue.user?.login!=='VeritasDesign' || !issue.title?.startsWith('FACTORY — ')) continue;
+              const comments=await github.paginate(github.rest.issues.listComments,{
+                owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,per_page:100
+              });
+              for(const c of comments){
+                if(c.user?.login!=='github-actions[bot]' || !c.body?.startsWith(prefix)) continue;
+                try{
+                  const r=JSON.parse(c.body.slice(prefix.length));
+                  if(r.router_run!==runId || r.version!=='0.1' || r.status!=='ROUTED') continue;
+                  if(r.role!=='FACTORY' || r.authority!=='bounded-write' ||
+                     r.production_write!==false || r.deploy!==false ||
+                     r.execution_authority!=='NONE') continue;
+                  matches.push({issue,r,comments});
+                }catch{}
+              }
+            }
+            if(matches.length!==1){
+              core.info('FACTORY_DISPATCH_SKIP routed order not uniquely found');
+              return;
+            }
+            const {issue,r,comments}=matches[0];
+            if(!supported.has(r.task_class)){
+              core.info('FACTORY_DISPATCH_UNSUPPORTED '+r.task_class);
+              return;
+            }
+            const terminal=comments.some(c=>c.user?.login==='github-actions[bot]' &&
+              (c.body?.includes('"status":"CLAIMED"') || c.body?.includes('"status":"COMPLETE"')) &&
+              c.body?.includes('"id":"'+r.id+'"'));
+            if(terminal){
+              core.info('FACTORY_DISPATCH_DUPLICATE_SKIP '+r.id);
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,
+              body:'FACTORY_BOUNDED_DISPATCH_V0.1 '+JSON.stringify({
+                version:'0.1',id:r.id,status:'MATCHED',task_class:r.task_class,
+                router_run:runId,production_write:false,deploy:false,
+                execution_authority:'NONE',
+                next_worker:'listing-agent-bounded-worker-required',
+                note:'Capability matched only; execution is not claimed until the executable Listing Agent worker validates and starts.'
+              })
+            });
+            core.info('FACTORY_DISPATCH_MATCHED '+r.id);
