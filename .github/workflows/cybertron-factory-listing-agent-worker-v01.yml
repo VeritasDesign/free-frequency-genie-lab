@@ -9,6 +9,10 @@ permissions:
   issues: write
   contents: read
 
+concurrency:
+  group: factory-listing-agent-claim
+  cancel-in-progress: false
+
 jobs:
   claim:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'workflow_run'
@@ -35,6 +39,9 @@ jobs:
                 if(!claimed)candidates.push({issue,m});
               }
             }
-            if(candidates.length!==1){core.info('LISTING_AGENT_WORKER_SKIP candidates='+candidates.length);return}
-            const {issue,m}=candidates[0];
-            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,body:'FACTORY_LISTING_AGENT_STATUS '+JSON.stringify({version:'0.1',status:'CLAIMED',id:m.id,task_class:m.task_class,router_run:m.router_run,authority:'bounded-write',production_write:false,deploy:false,execution_authority:'BOUNDED_LISTING_AGENT_CANDIDATE',source_repo:'VeritasDesign/free-frequency-factory',source_path:'apps/bucklist-listing-agent',note:'Claim authorizes isolated candidate work only; no deployment or production mutation.'})});
+            if(!candidates.length){core.info('LISTING_AGENT_WORKER_SKIP candidates=0');return}
+            for(const {issue,m} of candidates){
+              const fresh=await github.paginate(github.rest.issues.listComments,{owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,per_page:100});
+              if(fresh.some(c=>(c.body||'').startsWith('FACTORY_LISTING_AGENT_STATUS ')&&(c.body||'').includes('"status":"CLAIMED"')&&(c.body||'').includes('"id":"'+m.id+'"')))continue;
+              await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,body:'FACTORY_LISTING_AGENT_STATUS '+JSON.stringify({version:'0.1',status:'CLAIMED',id:m.id,task_class:m.task_class,router_run:m.router_run,authority:'bounded-write',production_write:false,deploy:false,execution_authority:'BOUNDED_LISTING_AGENT_CANDIDATE',source_repo:'VeritasDesign/free-frequency-factory',source_path:'apps/bucklist-listing-agent',note:'Claim authorizes isolated candidate work only; no deployment or production mutation.'})});
+            }
