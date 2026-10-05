@@ -1,0 +1,40 @@
+name: Cybertron Factory worker v0.1 — Listing Agent bounded
+
+on:
+  workflow_run:
+    workflows: ["Cybertron Factory bounded dispatcher v0.1"]
+    types: [completed]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  claim:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const routedPrefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
+            const matchPrefix='FACTORY_BOUNDED_DISPATCH_V0.1 ';
+            const allowed=new Set(['listing-agent-lifecycle','listing-agent-dynamic-item-specifics']);
+            const issues=await github.paginate(github.rest.issues.listForRepo,{owner:context.repo.owner,repo:context.repo.repo,state:'open',per_page:100});
+            const candidates=[];
+            for(const issue of issues){
+              if(issue.user?.login!=='VeritasDesign'||!issue.title?.startsWith('FACTORY — '))continue;
+              const comments=await github.paginate(github.rest.issues.listComments,{owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,per_page:100});
+              const matches=comments.filter(c=>c.user?.login==='github-actions[bot]'&&c.body?.startsWith(matchPrefix));
+              for(const mc of matches){
+                let m;try{m=JSON.parse(mc.body.slice(matchPrefix.length))}catch{continue}
+                if(m.status!=='MATCHED'||m.execution_authority!=='NONE'||m.production_write!==false||m.deploy!==false||!allowed.has(m.task_class))continue;
+                const route=comments.map(c=>c.body||'').filter(b=>b.startsWith(routedPrefix)).map(b=>{try{return JSON.parse(b.slice(routedPrefix.length))}catch{return null}}).find(r=>r&&r.id===m.id&&r.router_run===m.router_run);
+                if(!route||route.status!=='ROUTED'||route.role!=='FACTORY'||route.authority!=='bounded-write'||route.production_write!==false||route.deploy!==false||route.execution_authority!=='NONE'||route.task_class!==m.task_class)continue;
+                const claimed=comments.some(c=>(c.body||'').startsWith('FACTORY_LISTING_AGENT_STATUS ')&&(c.body||'').includes('"id":"'+m.id+'"'));
+                if(!claimed)candidates.push({issue,m});
+              }
+            }
+            if(candidates.length!==1){core.info('LISTING_AGENT_WORKER_SKIP candidates='+candidates.length);return}
+            const {issue,m}=candidates[0];
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,body:'FACTORY_LISTING_AGENT_STATUS '+JSON.stringify({version:'0.1',status:'CLAIMED',id:m.id,task_class:m.task_class,router_run:m.router_run,authority:'bounded-write',production_write:false,deploy:false,execution_authority:'BOUNDED_LISTING_AGENT_CANDIDATE',source_repo:'VeritasDesign/free-frequency-factory',source_path:'apps/bucklist-listing-agent',note:'Claim authorizes isolated candidate work only; no deployment or production mutation.'})});
