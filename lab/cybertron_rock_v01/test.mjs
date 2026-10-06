@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {validateWorkOrder,completeReceipt,verify,applyAcceptance} from "./contracts.mjs";
+const work={task_id:"ROCK-001",execution_id:"ROCK-001-0001",task_class:"synthetic",objective:"prove verifier boundary",scope:{synthetic:true},acceptance_contract:{required_evidence:["artifact","test"]},production_authority:false,unlocks:["ROCK-002"]};
+assert.equal(validateWorkOrder(work),true);
+const bad=completeReceipt(work,"synthetic-worker",[{kind:"artifact",id:"A1"}]);
+const rejected=verify(work,bad); assert.equal(rejected.status,"INSUFFICIENT_EVIDENCE");
+let state={tasks:{"ROCK-001":"VERIFYING","ROCK-002":"BACKLOG"},executions:{}};
+let a=applyAcceptance(state,work,rejected); assert.equal(a.state.tasks["ROCK-002"],"BACKLOG");
+const good=completeReceipt(work,"synthetic-worker",[{kind:"artifact",id:"A1"},{kind:"test",id:"T1"}]);
+const accepted=verify(work,good); assert.equal(accepted.status,"ACCEPTED");
+a=applyAcceptance(state,work,accepted); assert.equal(a.state.tasks["ROCK-001"],"ACCEPTED"); assert.equal(a.state.tasks["ROCK-002"],"ELIGIBLE");
+const replay=applyAcceptance(a.state,work,accepted); assert.equal(replay.duplicate,true); assert.deepEqual(replay.state,a.state);
+assert.throws(()=>validateWorkOrder({...work,production_authority:true}),/PRODUCTION_AUTHORITY_FORBIDDEN/);
+console.log("CYBERTRON_ROCK_V01 PASS — 7 acceptance assertions/groups");
