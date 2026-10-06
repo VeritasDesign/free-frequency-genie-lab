@@ -1,0 +1,74 @@
+name: Cybertron Airtable READY Dispatcher v0.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cybertron-airtable-ready-dispatcher-v01.yml'
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v01.cjs'
+  schedule:
+    - cron: '*/5 * * * *'
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+jobs:
+  dispatch-air-real-001:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Claim exact READY work order
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node .github/scripts/cybertron-airtable-ready-dispatcher-v01.cjs
+      - name: Build useful checkpoint artifact
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),m=require('./.github/scripts/cybertron-airtable-ready-dispatcher-v01.cjs');
+          fs.mkdirSync('continuity',{recursive:true});
+          fs.writeFileSync('continuity/CYBERTRON_VERIFIED_CLOSED_LOOP_2026-10-06.md',m.artifact);
+          NODE
+      - name: Verify artifact evidence contract
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('continuity/CYBERTRON_VERIFIED_CLOSED_LOOP_2026-10-06.md','utf8');
+          for(const x of ['VERIFIED CLOSED LOOP','run 37532486848','112505126982','6025596878','NOT YET VERIFIED','Shannon retains consequential deployment authority']) if(!s.includes(x)) throw Error('ARTIFACT_EVIDENCE_MISSING '+x);
+          if(/production-ready\.\s*$/m.test(s)) throw Error('OVERCLAIM');
+          console.log('AIR_REAL_001_ARTIFACT_VERIFY PASS');
+          NODE
+      - name: Commit branch and open PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="factory-air-real-001-closed-loop-checkpoint"
+          git config user.name "cybertron-dispatcher[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add continuity/CYBERTRON_VERIFIED_CLOSED_LOOP_2026-10-06.md
+          git commit -m "Factory: durable verified closed-loop checkpoint (#113)"
+          git push origin "$BRANCH"
+          PR_URL="$(gh pr create --base main --head "$BRANCH" --title "Factory: durable Cybertron closed-loop checkpoint (#113)" --body "AIR-REAL-001 useful-work artifact. Evidence-bounded; no deploy.")"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "AIR_REAL_001_PR $PR_URL"
+      - name: Persist completion only after PR exists
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          node - <<'NODE'
+          const m=require('./.github/scripts/cybertron-airtable-ready-dispatcher-v01.cjs');
+          (async()=>{
+            if(!process.env.PR_URL)throw Error('PR_EVIDENCE_MISSING');
+            const result='AIR-REAL-001 artifact verified; '+process.env.PR_URL;
+            await m.req(process.env.AIRTABLE_TOKEN,'PATCH',{fields:{
+              [m.C.fields.status]:'COMPLETE',
+              [m.C.fields.result]:result,
+              [m.C.fields.receipt]:'FACTORY REAL-WORK RECEIPT: READY autonomously claimed; checkpoint artifact built and verified; PR evidence='+process.env.PR_URL+'; no deploy.',
+              [m.C.fields.next]:'Human review of evidence-bounded checkpoint PR; no deployment authorized.'
+            }});
+            const after=await m.req(process.env.AIRTABLE_TOKEN,'GET');
+            if(after.fields[m.C.fields.status]!=='COMPLETE'||after.fields[m.C.fields.attempt]!==m.C.exec||!String(after.fields[m.C.fields.result]||'').includes(process.env.PR_URL))throw Error('DURABLE_READBACK_FAILED');
+            console.log('AIR_REAL_001_VERIFIED_COMPLETE '+process.env.PR_URL);
+          })().catch(e=>{console.error(e.message);process.exit(1)});
+          NODE
