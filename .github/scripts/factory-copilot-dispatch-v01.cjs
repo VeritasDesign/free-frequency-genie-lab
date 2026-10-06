@@ -116,6 +116,7 @@ function hasTerminalExecution(comments, id) {
   return comments.some(c => {
     const body = c.body || '';
     if (!body.includes('"id":"'+id+'"')) return false;
+    if (body.startsWith(ASSIGN_PREFIX)) return false;
     return body.includes('"status":"CLAIMED"') ||
       body.includes('"status":"COMPLETE"') ||
       body.includes('"status":"CANCELLED"') ||
