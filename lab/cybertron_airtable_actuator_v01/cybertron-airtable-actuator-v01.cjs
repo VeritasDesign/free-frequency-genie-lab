@@ -49,7 +49,7 @@ async function request(token, method, url, body) {
 async function run({token,baseId=CONTRACT.baseId,tableId=CONTRACT.tableId,recordId=CONTRACT.recordId,dryRun=false,fixture=null}={}) {
   assertTarget(baseId,tableId,recordId);
   if(!token && !fixture) throw new Error('AIRTABLE_TOKEN_REQUIRED');
-  const url='https://api.airtable.com/v0/'+baseId+'/'+tableId+'/'+recordId;
+  const url='https://api.airtable.com/v0/'+baseId+'/'+tableId+'/'+recordId+'?returnFieldsByFieldId=true';
   const before=fixture || await request(token,'GET',url);
   const decision=validate(before.fields||{});
   if(decision==='REPLAY') return {status:'VERIFIED_REPLAY',execution_id:CONTRACT.executionId,result:CONTRACT.result};
