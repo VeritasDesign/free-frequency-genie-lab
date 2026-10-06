@@ -1,0 +1,20 @@
+name: Factory deterministic Builder regressions
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/factory-deterministic-builder-v01.cjs'
+      - '.github/scripts/test-factory-deterministic-builder-v01.cjs'
+      - '.github/workflows/factory-deterministic-builder-regressions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deterministic Builder regressions
+        run: node .github/scripts/test-factory-deterministic-builder-v01.cjs
