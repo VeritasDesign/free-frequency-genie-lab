@@ -11,7 +11,7 @@ export function verify(w,r){
  if(!r||r.task_id!==w.task_id||r.execution_id!==w.execution_id) return {status:"INSUFFICIENT_EVIDENCE",reason:"identity"};
  if(r.result!=="COMPLETE"||r.production_modified!==false) return {status:"REJECTED",reason:"result_or_authority"};
  const required=w.acceptance_contract.required_evidence||[];
- const kinds=new Set((r.evidence||[]).map(x=>x.kind));
+ const valid=(r.evidence||[]).filter(x=>x && typeof x.kind==="string" && typeof x.id==="string" && x.id.trim().length>0);\n const kinds=new Set(valid.map(x=>x.kind));
  const missing=required.filter(x=>!kinds.has(x));
  return missing.length?{status:"INSUFFICIENT_EVIDENCE",reason:"missing",missing}:{status:"ACCEPTED"};
 }
