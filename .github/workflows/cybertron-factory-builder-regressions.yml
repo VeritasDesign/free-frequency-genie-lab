@@ -1,0 +1,27 @@
+name: Cybertron Factory builder bridge regressions
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/factory-copilot-dispatch-v01.cjs'
+      - '.github/scripts/test-factory-copilot-dispatch-v01.cjs'
+      - '.github/workflows/cybertron-factory-bounded-dispatch-v01.yml'
+      - '.github/workflows/cybertron-factory-builder-regressions.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/factory-copilot-dispatch-v01.cjs'
+      - '.github/scripts/test-factory-copilot-dispatch-v01.cjs'
+      - '.github/workflows/cybertron-factory-bounded-dispatch-v01.yml'
+      - '.github/workflows/cybertron-factory-builder-regressions.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Factory Builder dispatch regression suite
+        run: node .github/scripts/test-factory-copilot-dispatch-v01.cjs
