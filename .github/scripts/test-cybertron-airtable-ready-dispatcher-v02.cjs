@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('assert'),m=require('./cybertron-airtable-ready-dispatcher-v02.cjs'),F=m.C.fields;
+const good={[F.id]:m.C.id,[F.status]:'READY',[F.task]:m.C.task,[F.payload]:m.C.payload,[F.next]:m.C.next,[F.attempt]:'',[F.claimed]:'',[F.result]:''};
+assert.equal(m.v(good),'APPLY');
+assert.throws(()=>m.v({...good,[F.id]:'AIR-REAL-001'}),/WORK_ORDER_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.task]:'factory-build'}),/TASK_CLASS_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.payload]:'different'}),/PAYLOAD_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.status]:'RUNNING'}),/STATUS_NOT_READY/);
+assert.equal(m.v({...good,[F.status]:'CLAIMED',[F.attempt]:m.C.exec,[F.claimed]:'Cybertron READY Dispatcher v0.2'}),'RESUME');
+assert.equal(m.v({...good,[F.status]:'COMPLETE',[F.attempt]:m.C.exec}),'REPLAY');
+assert.equal(m.C.target.repo,'VeritasDesign/free-frequency-landing-lab');
+assert.equal(m.C.target.blob,'97127001e1d37eedbd5258ccd28f299de1520a0c');
+console.log('CYBERTRON_READY_DISPATCHER_V02_TEST PASS — bounded AIR-REAL-002 contract');
