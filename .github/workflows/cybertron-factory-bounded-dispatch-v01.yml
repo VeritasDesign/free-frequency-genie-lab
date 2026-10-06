@@ -24,6 +24,8 @@ jobs:
 
       - name: Match and assign bounded Factory work
         uses: actions/github-script@v7
+        env:
+          FACTORY_BUILDER_USER_TOKEN: ${{ secrets.FACTORY_BUILDER_USER_TOKEN }}
         with:
           script: |
             const d=require('./.github/scripts/factory-copilot-dispatch-v01.cjs');
@@ -91,12 +93,28 @@ jobs:
             }
 
             const payload=d.assignmentPayload(r);
+            const builderToken=process.env.FACTORY_BUILDER_USER_TOKEN;
+            if(!builderToken){
+              await github.rest.issues.createComment({
+                owner,repo,issue_number:issue.number,
+                body:'FACTORY_BUILDER_ASSIGNMENT_V0.1 '+JSON.stringify({
+                  version:'0.1',id:r.id,status:'BLOCKED',task_class:r.task_class,
+                  builder:d.BUILDER,target_repo:cap.targetRepo,base_branch:cap.baseBranch,
+                  blocker:'missing_FACTORY_BUILDER_USER_TOKEN',
+                  production_write:false,deploy:false,execution_authority:'NONE',
+                  note:'Copilot issue assignment requires a user token; GitHub Actions GITHUB_TOKEN is intentionally not used for Builder authority.'
+                })
+              });
+              core.setFailed('Missing FACTORY_BUILDER_USER_TOKEN');
+              return;
+            }
             try{
               await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees',{
                 owner,repo,issue_number:issue.number,
                 ...payload,
                 headers:{
                   accept:'application/vnd.github+json',
+                  authorization:'Bearer '+builderToken,
                   'X-GitHub-Api-Version':'2022-11-28'
                 }
               });
