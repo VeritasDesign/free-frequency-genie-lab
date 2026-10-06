@@ -1,0 +1,99 @@
+name: Factory free deterministic Builder v0.1
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_class:
+        description: Bounded task class
+        required: true
+        type: choice
+        options:
+          - sentinel-v021-forecast-coordinate-fix
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted Builder control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: control
+      - name: Validate bounded task
+        working-directory: control
+        env:
+          TASK_CLASS: ${{ inputs.task_class }}
+        run: |
+          node - <<'NODE'
+          const b=require('./.github/scripts/factory-deterministic-builder-v01.cjs');
+          const task=process.env.TASK_CLASS;
+          if(!b.TASKS[task]) throw new Error('unsupported_task_class');
+          console.log('FACTORY_FREE_BUILDER_MATCHED '+task);
+          NODE
+      - name: Checkout isolated Sentinel candidate
+        uses: actions/checkout@v4
+        with:
+          ref: factory-sentinel-v021-make-home-real
+          path: work
+      - name: Apply bounded Builder transformation
+        env:
+          TASK_CLASS: ${{ inputs.task_class }}
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=require('./control/.github/scripts/factory-deterministic-builder-v01.cjs');
+          const task=process.env.TASK_CLASS, spec=b.TASKS[task];
+          const files={};
+          for(const p of spec.files) files[p]=fs.readFileSync('work/'+p,'utf8');
+          const out=b.build(task,files);
+          for(const [p,c] of Object.entries(out)) fs.writeFileSync('work/'+p,c);
+          NODE
+      - name: Run Builder and Sentinel regressions
+        run: |
+          node control/.github/scripts/test-factory-deterministic-builder-v01.cjs
+          node work/lab/sentinel_v021_candidate/FACTORY_TESTS.mjs
+      - name: Commit isolated Builder candidate
+        working-directory: work
+        env:
+          TASK_CLASS: ${{ inputs.task_class }}
+        run: |
+          BRANCH="factory-builder-95-forecast-coordinate-fix"
+          git checkout -b "$BRANCH"
+          git config user.name "factory-free-builder[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lab/sentinel_v021_candidate/src/geo.js lab/sentinel_v021_candidate/FACTORY_TESTS.mjs
+          git diff --cached --exit-code && { echo "No bounded changes produced"; exit 1; } || true
+          git commit -m "Factory Builder: fix Sentinel forecast coordinate precision (#95)"
+          git push origin "$BRANCH"
+      - name: Open Builder PR and emit receipt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=context.repo.owner, repo=context.repo.repo;
+            const head='factory-builder-95-forecast-coordinate-fix';
+            const base='factory-sentinel-v021-make-home-real';
+            const existing=await github.rest.pulls.list({owner,repo,state:'open',head:owner+':'+head,base});
+            let pr=existing.data[0];
+            if(!pr){
+              pr=(await github.rest.pulls.create({
+                owner,repo,head,base,
+                title:'Factory Builder: Sentinel #95 forecast coordinate precision',
+                body:'Produced by the free deterministic Factory Builder for #95. Bounded files only; Builder regressions and Sentinel FACTORY_TESTS passed. No deploy.'
+              })).data;
+            }
+            const receipt='FACTORY_BUILDER_RESULT_V0.1 '+JSON.stringify({
+              version:'0.1',id:'CYB-ROLE-095',issue_number:95,status:'COMPLETE',
+              task_class:'sentinel-v021-forecast-coordinate-fix',
+              builder:'factory-free-deterministic-builder-v0.1',
+              pr_number:pr.number,base_branch:base,
+              production_write:false,deploy:false,execution_authority:'BRANCH_PR_ONLY',
+              tests:['test-factory-deterministic-builder-v01.cjs','lab/sentinel_v021_candidate/FACTORY_TESTS.mjs'],
+              next_gate:'Chief reviews evidence; Shannon retains deploy authority.'
+            });
+            await github.rest.issues.createComment({owner,repo,issue_number:95,body:receipt});
+            core.info('FACTORY_FREE_BUILDER_COMPLETE PR #'+pr.number);
