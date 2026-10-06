@@ -39,6 +39,7 @@ function v(f){
  if(x('payload')!==C.payload)throw Error('PAYLOAD_MISMATCH');
  if(x('next')!==C.next)throw Error('NEXT_ACTION_MISMATCH');
  if(x('status')==='COMPLETE'&&x('attempt')===C.exec)return 'REPLAY';
+ if(x('status')==='CLAIMED'&&x('attempt')===C.exec&&x('claimed')==='Cybertron READY Dispatcher v0.1')return 'RESUME';
  if(x('status')!=='READY')throw Error('STATUS_NOT_READY');
  if(x('attempt')||x('claimed')||x('result'))throw Error('ALREADY_CLAIMED_OR_COMPLETED');
  return 'APPLY';
@@ -51,7 +52,9 @@ async function req(token,method,body){
 async function main(){
  const token=process.env.AIRTABLE_TOKEN;if(!token)throw Error('AIRTABLE_TOKEN_REQUIRED');
  const before=await req(token,'GET');const d=v(before.fields||{});
+ if(process.env.GITHUB_OUTPUT)require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'decision='+d+'\n');
  if(d==='REPLAY'){console.log('DISPATCH_REPLAY');return;}
+ if(d==='RESUME'){console.log('DISPATCH_RESUME '+C.id);return;}
  await req(token,'PATCH',{fields:{[C.fields.status]:'CLAIMED',[C.fields.attempt]:C.exec,[C.fields.claimed]:'Cybertron READY Dispatcher v0.1'}});
  console.log('DISPATCH_CLAIMED '+C.id);
 }
