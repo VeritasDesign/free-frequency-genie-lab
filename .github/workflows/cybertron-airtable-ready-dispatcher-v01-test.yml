@@ -1,0 +1,16 @@
+name: Cybertron READY Dispatcher v0.1 tests
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v01.cjs'
+      - '.github/scripts/test-cybertron-airtable-ready-dispatcher-v01.cjs'
+      - '.github/workflows/cybertron-airtable-ready-dispatcher-v01.yml'
+      - '.github/workflows/cybertron-airtable-ready-dispatcher-v01-test.yml'
+permissions:
+  contents: read
+jobs:
+  deterministic-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node .github/scripts/test-cybertron-airtable-ready-dispatcher-v01.cjs
