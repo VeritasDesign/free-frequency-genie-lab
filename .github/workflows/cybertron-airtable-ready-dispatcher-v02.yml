@@ -1,0 +1,102 @@
+name: Cybertron Airtable READY Dispatcher v0.2
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cybertron-airtable-ready-dispatcher-v02.yml'
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
+  schedule:
+    - cron: '*/5 * * * *'
+permissions:
+  contents: read
+jobs:
+  dispatch-air-real-002:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_REPO: VeritasDesign/free-frequency-landing-lab
+      TARGET_PATH: build_landing.py
+      TARGET_BLOB: 97127001e1d37eedbd5258ccd28f299de1520a0c
+      TARGET_BRANCH: factory-air-real-002-frequency-hero
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify dispatcher contract tests
+        run: node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
+      - name: Preflight cross-repo capability and exact target
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "FACTORY_GITHUB_TOKEN_REQUIRED — AIR-REAL-002 remains READY"; exit 78; }
+          PUSH="$(gh api "repos/$TARGET_REPO" --jq '.permissions.push')"
+          test "$PUSH" = "true" || { echo "TARGET_PUSH_PERMISSION_REQUIRED — AIR-REAL-002 remains READY"; exit 78; }
+          BLOB="$(gh api "repos/$TARGET_REPO/contents/$TARGET_PATH?ref=main" --jq '.sha')"
+          test "$BLOB" = "$TARGET_BLOB" || { echo "TARGET_SOURCE_DRIFT $BLOB — AIR-REAL-002 remains READY"; exit 78; }
+          echo "AIR_REAL_002_PREFLIGHT PASS"
+      - name: Claim exact READY work order
+        id: claim
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs
+      - name: Build bounded desktop-only fix and PR
+        if: steps.claim.outputs.decision != 'REPLAY'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
+        run: |
+          gh repo clone "$TARGET_REPO" target
+          cd target
+          git checkout -B "$TARGET_BRANCH" origin/main
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('build_landing.py')
+          s=p.read_text()
+          if '/* AIR-REAL-002 desktop Frequency hero correction */' not in s:
+              anchor="mobile='''/* Approved FREQ phone-only correction */"
+              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */\\n@media(min-width:761px){\\n body[data-skin=\\"frequency\\"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}\\n}'''\\n"""
+              if s.count(anchor)!=1: raise SystemExit('DESKTOP_PATCH_ANCHOR_MISMATCH')
+              s=s.replace(anchor,desktop+anchor)
+              old='html=html.replace("</style>",beta_css+mobile+"</style>")'
+              new='html=html.replace("</style>",beta_css+desktop+mobile+"</style>")'
+              if s.count(old)!=1: raise SystemExit('STYLE_COMPOSE_ANCHOR_MISMATCH')
+              s=s.replace(old,new)
+              p.write_text(s)
+          PY
+          python3 build_landing.py | tee /tmp/air-real-002-build.txt
+          grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
+          grep -q 'Approved FREQ phone-only correction' site/index.html
+          grep -q 'object-fit:contain;object-position:center;transform:none' site/index.html
+          git diff --exit-code -- . ':!build_landing.py'
+          git config user.name "cybertron-dispatcher[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build_landing.py
+          if git diff --cached --quiet; then
+            echo "PATCH_ALREADY_PRESENT"
+          else
+            git commit -m "Factory: fix Frequency desktop hero framing (AIR-REAL-002)"
+            git push --force-with-lease origin "$TARGET_BRANCH"
+          fi
+          PR_URL="$(gh pr list --repo "$TARGET_REPO" --head "$TARGET_BRANCH" --state open --json url --jq '.[0].url // empty')"
+          if [ -z "$PR_URL" ]; then
+            PR_URL="$(gh pr create --repo "$TARGET_REPO" --base main --head "$TARGET_BRANCH" --title "Factory: fix Frequency desktop hero framing (AIR-REAL-002)" --body "Bounded desktop-only Frequency hero correction. Existing <=760px mobile correction remains byte-for-byte in the build source. Build passed. No production deployment; merge remains a human gate.")"
+          fi
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "AIR_REAL_002_PR $PR_URL"
+      - name: Persist completion only after PR evidence
+        if: steps.claim.outputs.decision != 'REPLAY'
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          node - <<'NODE'
+          const m=require('./.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs');
+          (async()=>{if(!process.env.PR_URL)throw Error('PR_EVIDENCE_MISSING');
+            await m.req(process.env.AIRTABLE_TOKEN,'PATCH',{fields:{
+              [m.C.fields.status]:'COMPLETE',
+              [m.C.fields.result]:'AIR-REAL-002 desktop hero patch built and verified; '+process.env.PR_URL,
+              [m.C.fields.receipt]:'FACTORY RECEIPT: bounded desktop-only hero CSS patch; existing mobile correction preserved in source/build verification; PR evidence='+process.env.PR_URL+'; NO PRODUCTION DEPLOY.',
+              [m.C.fields.next]:'Human visual review of desktop + mobile PR evidence; merge/deployment remains separately gated.'
+            }});
+            const a=await m.req(process.env.AIRTABLE_TOKEN,'GET');
+            if(a.fields[m.C.fields.status]!=='COMPLETE'||a.fields[m.C.fields.attempt]!==m.C.exec||!String(a.fields[m.C.fields.result]||'').includes(process.env.PR_URL))throw Error('DURABLE_READBACK_FAILED');
+            console.log('AIR_REAL_002_VERIFIED_COMPLETE '+process.env.PR_URL);
+          })().catch(e=>{console.error(e.message);process.exit(1)});
+          NODE
