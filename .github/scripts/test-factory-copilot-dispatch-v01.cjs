@@ -49,4 +49,12 @@ assert.equal(d.hasTerminalExecution([{body:'X {"id":"CYB-ROLE-095","status":"MAT
 assert.equal(d.acceptedPrerequisite([{body:d.RESULT_PREFIX+JSON.stringify({issue_number:95,status:'ACCEPTED'})}],95),true);
 assert.equal(d.acceptedPrerequisite([{body:d.RESULT_PREFIX+JSON.stringify({issue_number:95,status:'REJECTED'})}],95),false);
 
+
+const fs=require('fs');
+const workflow=fs.readFileSync('.github/workflows/cybertron-factory-bounded-dispatch-v01.yml','utf8');
+assert.match(workflow,/FACTORY_BUILDER_USER_TOKEN/);
+assert.match(workflow,/missing_FACTORY_BUILDER_USER_TOKEN/);
+assert.match(workflow,/authorization:'Bearer '\+builderToken/);
+assert.doesNotMatch(workflow,/authorization:'Bearer '\+process\.env\.GITHUB_TOKEN/);
+
 console.log('Factory Copilot builder dispatch gates PASS');
