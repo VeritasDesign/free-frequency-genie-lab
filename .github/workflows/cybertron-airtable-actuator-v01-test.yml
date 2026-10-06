@@ -1,0 +1,15 @@
+name: Cybertron Airtable Actuator v0.1 tests
+on:
+  pull_request:
+    paths:
+      - 'lab/cybertron_airtable_actuator_v01/**'
+      - '.github/workflows/cybertron-airtable-actuator-v01-test.yml'
+permissions:
+  contents: read
+jobs:
+  deterministic-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actuator acceptance suite
+        run: node lab/cybertron_airtable_actuator_v01/test.cjs
