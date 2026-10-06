@@ -6,6 +6,7 @@ on:
       - '.github/scripts/factory-deterministic-builder-v01.cjs'
       - '.github/scripts/test-factory-deterministic-builder-v01.cjs'
       - '.github/workflows/factory-deterministic-builder-regressions.yml'
+      - '.github/workflows/factory-free-deterministic-builder-v01.yml'
   workflow_dispatch:
 
 permissions:
