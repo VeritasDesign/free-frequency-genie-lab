@@ -70,9 +70,16 @@ jobs:
           git diff --cached --exit-code && { echo "No bounded changes produced"; exit 1; } || true
           git commit -m "Factory Builder: fix Sentinel forecast coordinate precision (#95)"
           # This Builder branch is a deterministic artifact of the accepted base + bounded task.
-          # A prior interrupted run may already have created it. Replace only this dedicated
-          # Builder-owned branch, never the accepted base or any production branch.
-          git push --force-with-lease origin "$BRANCH"
+          # A prior interrupted run may already have created it. Fetch that exact dedicated
+          # Builder-owned ref first so force-with-lease has a real expected remote value.
+          # Never force-update the accepted base or any production branch.
+          git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+            EXPECTED="$(git rev-parse "refs/remotes/origin/$BRANCH")"
+            git push --force-with-lease="refs/heads/$BRANCH:$EXPECTED" origin "$BRANCH"
+          else
+            git push origin "$BRANCH"
+          fi
       - name: Open Builder PR and emit receipt
         uses: actions/github-script@v7
         with:
