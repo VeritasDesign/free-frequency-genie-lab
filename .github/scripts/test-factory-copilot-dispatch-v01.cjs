@@ -46,6 +46,7 @@ assert.equal(d.hasBuilderAssignment([{body:d.ASSIGN_PREFIX+JSON.stringify({id:'C
 assert.equal(d.hasBuilderAssignment([],'CYB-ROLE-095'),false);
 assert.equal(d.hasTerminalExecution([{body:'X {"id":"CYB-ROLE-095","status":"COMPLETE"}'}],'CYB-ROLE-095'),true);
 assert.equal(d.hasTerminalExecution([{body:'X {"id":"CYB-ROLE-095","status":"MATCHED"}'}],'CYB-ROLE-095'),false);
+assert.equal(d.hasTerminalExecution([{body:d.ASSIGN_PREFIX+JSON.stringify({id:'CYB-ROLE-095',status:'BLOCKED'})}],'CYB-ROLE-095'),false,'blocked assignment must be retryable');
 assert.equal(d.acceptedPrerequisite([{body:d.RESULT_PREFIX+JSON.stringify({issue_number:95,status:'ACCEPTED'})}],95),true);
 assert.equal(d.acceptedPrerequisite([{body:d.RESULT_PREFIX+JSON.stringify({issue_number:95,status:'REJECTED'})}],95),false);
 
