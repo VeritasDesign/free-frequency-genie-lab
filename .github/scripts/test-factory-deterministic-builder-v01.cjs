@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('assert/strict');
+const b=require('./factory-deterministic-builder-v01.cjs');
+assert.deepEqual(Object.keys(b.TASKS),['sentinel-v021-forecast-coordinate-fix']);
+assert.equal(b.TASKS['sentinel-v021-forecast-coordinate-fix'].issueNumber,95);
+assert.equal(b.TASKS['sentinel-v021-forecast-coordinate-fix'].baseBranch,'factory-sentinel-v021-make-home-real');
+assert.equal(b.round6(1.123456789),1.123457);
+const geo="function rings(g){return[]}\nexport function representativePoint(g){const xs=[1],ys=[2];return {lon:(Math.min(...xs)+Math.max(...xs))/2,lat:(Math.min(...ys)+Math.max(...ys))/2,method:'official-zone-bounds-midpoint'}}";
+const pg=b.patchGeo(geo);
+assert.match(pg,/function round6/); assert.match(pg,/lon:round6/); assert.match(pg,/lat:round6/);
+assert.throws(()=>b.patchGeo('no anchor'),/geo_expected_source_not_found/);
+const tests="test('representative point derives from official geometry',()=>{});";
+const pt=b.patchTests(tests);
+assert.match(pt,/transport-safe at <=6 decimals/);
+assert.equal(b.patchTests(pt),pt,'test patch must be idempotent');
+console.log('Factory deterministic Builder bootstrap PASS');
