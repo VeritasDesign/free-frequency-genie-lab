@@ -1,4 +1,4 @@
-name: Cybertron Factory bounded dispatcher v0.1
+name: Cybertron Factory bounded dispatcher v0.2
 
 on:
   workflow_run:
@@ -16,61 +16,113 @@ jobs:
       github.event.workflow_run.event == 'issues'
     runs-on: ubuntu-latest
     steps:
-      - name: Match routed order to explicit capability
+      - name: Checkout trusted dispatcher source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Match and assign bounded Factory work
         uses: actions/github-script@v7
         with:
           script: |
+            const d=require('./.github/scripts/factory-copilot-dispatch-v01.cjs');
             const prefix='CYBERTRON_ROLE_RECEIPT_V0.1 ';
             const runId=context.payload.workflow_run.id;
-            const supported=new Set([
-              'listing-agent-lifecycle',
-              'listing-agent-dynamic-item-specifics'
-            ]);
+            const owner=context.repo.owner, repo=context.repo.repo;
+
             const issues=await github.paginate(github.rest.issues.listForRepo,{
-              owner:context.repo.owner,repo:context.repo.repo,state:'open',per_page:100
+              owner,repo,state:'open',per_page:100
             });
             const matches=[];
             for(const issue of issues){
               if(issue.user?.login!=='VeritasDesign' || !issue.title?.startsWith('FACTORY — ')) continue;
               const comments=await github.paginate(github.rest.issues.listComments,{
-                owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,per_page:100
+                owner,repo,issue_number:issue.number,per_page:100
               });
               for(const c of comments){
                 if(c.user?.login!=='github-actions[bot]' || !c.body?.startsWith(prefix)) continue;
-                try{
-                  const r=JSON.parse(c.body.slice(prefix.length));
-                  if(r.router_run!==runId || r.version!=='0.1' || r.status!=='ROUTED') continue;
-                  if(r.role!=='FACTORY' || r.authority!=='bounded-write' ||
-                     r.production_write!==false || r.deploy!==false ||
-                     r.execution_authority!=='NONE') continue;
-                  matches.push({issue,r,comments});
-                }catch{}
+                let r=null; try{r=JSON.parse(c.body.slice(prefix.length))}catch{}
+                if(!r || r.router_run!==runId) continue;
+                matches.push({issue,r,comments});
               }
             }
             if(matches.length!==1){
               core.info('FACTORY_DISPATCH_SKIP routed order not uniquely found');
               return;
             }
+
             const {issue,r,comments}=matches[0];
-            if(!supported.has(r.task_class)){
-              core.info('FACTORY_DISPATCH_UNSUPPORTED '+r.task_class);
+            if(!d.validReceipt(r,issue)){
+              core.info('FACTORY_DISPATCH_UNSUPPORTED_OR_UNSAFE '+String(r?.task_class||'unknown'));
               return;
             }
-            const terminal=comments.some(c=>c.user?.login==='github-actions[bot]' &&
-              (c.body?.includes('"status":"CLAIMED"') || c.body?.includes('"status":"COMPLETE"')) &&
-              c.body?.includes('"id":"'+r.id+'"'));
-            if(terminal){
-              core.info('FACTORY_DISPATCH_DUPLICATE_SKIP '+r.id);
+            if(d.hasTerminalExecution(comments,r.id)){
+              core.info('FACTORY_DISPATCH_TERMINAL_SKIP '+r.id);
               return;
             }
+            if(d.hasBuilderAssignment(comments,r.id)){
+              core.info('FACTORY_DISPATCH_DUPLICATE_ASSIGNMENT_SKIP '+r.id);
+              return;
+            }
+
+            const cap=d.CAPABILITIES[r.task_class];
+            if(cap.prerequisiteIssue){
+              const priorComments=await github.paginate(github.rest.issues.listComments,{
+                owner,repo,issue_number:cap.prerequisiteIssue,per_page:100
+              });
+              if(!d.acceptedPrerequisite(priorComments,cap.prerequisiteIssue)){
+                const alreadyWaiting=comments.some(c=>c.body?.startsWith('FACTORY_BUILDER_WAIT_V0.1 ') && c.body?.includes('"id":"'+r.id+'"'));
+                if(!alreadyWaiting){
+                  await github.rest.issues.createComment({
+                    owner,repo,issue_number:issue.number,
+                    body:'FACTORY_BUILDER_WAIT_V0.1 '+JSON.stringify({
+                      version:'0.1',id:r.id,status:'WAITING',task_class:r.task_class,
+                      prerequisite_issue:cap.prerequisiteIssue,
+                      production_write:false,deploy:false,
+                      execution_authority:'NONE',
+                      note:'Builder assignment is fail-closed until the prior Factory result is explicitly ACCEPTED.'
+                    })
+                  });
+                }
+                core.info('FACTORY_DISPATCH_WAITING '+r.id+' prerequisite #'+cap.prerequisiteIssue);
+                return;
+              }
+            }
+
+            const payload=d.assignmentPayload(r);
+            try{
+              await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/assignees',{
+                owner,repo,issue_number:issue.number,
+                ...payload,
+                headers:{
+                  accept:'application/vnd.github+json',
+                  'X-GitHub-Api-Version':'2022-11-28'
+                }
+              });
+            }catch(err){
+              const status=err?.status||err?.response?.status||'unknown';
+              await github.rest.issues.createComment({
+                owner,repo,issue_number:issue.number,
+                body:'FACTORY_BUILDER_ASSIGNMENT_V0.1 '+JSON.stringify({
+                  version:'0.1',id:r.id,status:'BLOCKED',task_class:r.task_class,
+                  builder:d.BUILDER,target_repo:cap.targetRepo,base_branch:cap.baseBranch,
+                  blocker:'copilot_assignment_failed_http_'+status,
+                  production_write:false,deploy:false,execution_authority:'NONE'
+                })
+              });
+              core.setFailed('Copilot Builder assignment failed HTTP '+status);
+              return;
+            }
+
             await github.rest.issues.createComment({
-              owner:context.repo.owner,repo:context.repo.repo,issue_number:issue.number,
-              body:'FACTORY_BOUNDED_DISPATCH_V0.1 '+JSON.stringify({
-                version:'0.1',id:r.id,status:'MATCHED',task_class:r.task_class,
+              owner,repo,issue_number:issue.number,
+              body:d.ASSIGN_PREFIX+JSON.stringify({
+                version:'0.1',id:r.id,status:'ASSIGNED',task_class:r.task_class,
+                builder:d.BUILDER,target_repo:cap.targetRepo,base_branch:cap.baseBranch,
                 router_run:runId,production_write:false,deploy:false,
-                execution_authority:'NONE',
-                next_worker:'listing-agent-bounded-worker-required',
-                note:'Capability matched only; execution is not claimed until the executable Listing Agent worker validates and starts.'
+                execution_authority:'BRANCH_PR_ONLY',
+                next_gate:'Builder opens PR; Chief reviews evidence; Shannon retains deploy authority.'
               })
             });
-            core.info('FACTORY_DISPATCH_MATCHED '+r.id);
+            core.info('FACTORY_BUILDER_ASSIGNED '+r.id+' -> '+d.BUILDER);
