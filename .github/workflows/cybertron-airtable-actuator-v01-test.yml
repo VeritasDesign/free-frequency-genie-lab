@@ -4,13 +4,11 @@ on:
     paths:
       - 'lab/cybertron_airtable_actuator_v01/**'
       - '.github/workflows/cybertron-airtable-actuator-v01-test.yml'
-  workflow_dispatch:
-    inputs:
-      live_actuate_003b:
-        description: 'Run the bounded live AIR-ROCK-003B actuator'
-        required: true
-        type: boolean
-        default: false
+  push:
+    branches:
+      - factory-cybertron-airtable-actuator-v01
+    paths:
+      - '.github/workflows/cybertron-airtable-actuator-v01-test.yml'
 permissions:
   contents: read
 jobs:
@@ -21,10 +19,9 @@ jobs:
       - name: Run actuator acceptance suite
         run: node lab/cybertron_airtable_actuator_v01/test.cjs
   live-actuate-003b:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_actuate_003b == true }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/factory-cybertron-airtable-actuator-v01' }}
     needs: deterministic-test
     runs-on: ubuntu-latest
-    environment: cybertron-rock
     steps:
       - uses: actions/checkout@v4
       - name: Execute bounded AIR-ROCK-003B actuator
