@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('assert'),m=require('./cybertron-airtable-ready-dispatcher-v01.cjs'),F=m.C.fields;
+const good={[F.id]:m.C.id,[F.status]:'READY',[F.task]:m.C.task,[F.payload]:m.C.payload,[F.next]:m.C.next,[F.attempt]:'',[F.claimed]:'',[F.result]:''};
+assert.equal(m.v(good),'APPLY');
+assert.throws(()=>m.v({...good,[F.id]:'WRONG'}),/WORK_ORDER_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.task]:'deploy'}),/TASK_CLASS_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.payload]:'different'}),/PAYLOAD_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.status]:'RUNNING'}),/STATUS_NOT_READY/);
+assert.equal(m.v({...good,[F.status]:'CLAIMED',[F.attempt]:m.C.exec,[F.claimed]:'Cybertron READY Dispatcher v0.1'}),'RESUME');
+assert.equal(m.v({...good,[F.status]:'COMPLETE',[F.attempt]:m.C.exec}),'REPLAY');
+for(const x of ['VERIFIED CLOSED LOOP','run 37532486848','112505126982','6025596878','NOT YET VERIFIED','Shannon retains consequential deployment authority'])assert(m.artifact.includes(x));
+console.log('CYBERTRON_READY_DISPATCHER_TEST PASS — 8 contract/evidence assertions');
