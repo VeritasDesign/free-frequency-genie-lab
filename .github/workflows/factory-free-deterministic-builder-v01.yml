@@ -69,7 +69,10 @@ jobs:
           git add lab/sentinel_v021_candidate/src/geo.js lab/sentinel_v021_candidate/FACTORY_TESTS.mjs
           git diff --cached --exit-code && { echo "No bounded changes produced"; exit 1; } || true
           git commit -m "Factory Builder: fix Sentinel forecast coordinate precision (#95)"
-          git push origin "$BRANCH"
+          # This Builder branch is a deterministic artifact of the accepted base + bounded task.
+          # A prior interrupted run may already have created it. Replace only this dedicated
+          # Builder-owned branch, never the accepted base or any production branch.
+          git push --force-with-lease origin "$BRANCH"
       - name: Open Builder PR and emit receipt
         uses: actions/github-script@v7
         with:
