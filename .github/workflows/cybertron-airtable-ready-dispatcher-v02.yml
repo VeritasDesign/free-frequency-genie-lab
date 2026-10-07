@@ -47,7 +47,10 @@ jobs:
           gh repo clone "$TARGET_REPO" target
           cd target
           git checkout -B "$TARGET_BRANCH" origin/main
-          python3 ../.github/scripts/air-real-002-frequency-hero-patch.py\n          echo "AIR_REAL_002_STAGE syntax_check_target"\n          python3 -m py_compile build_landing.py\n          echo "AIR_REAL_002_STAGE build_target"
+          python3 ../.github/scripts/air-real-002-frequency-hero-patch.py
+          echo "AIR_REAL_002_STAGE syntax_check_target"
+          python3 -m py_compile build_landing.py
+          echo "AIR_REAL_002_STAGE build_target"
           python3 build_landing.py | tee /tmp/air-real-002-build.txt
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
           grep -q 'Approved FREQ phone-only correction' site/index.html
