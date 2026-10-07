@@ -42,6 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
+          echo "AIR_REAL_002_STAGE clone_target"
           gh repo clone "$TARGET_REPO" target
           cd target
           git checkout -B "$TARGET_BRANCH" origin/main
@@ -60,6 +61,7 @@ jobs:
               s=s.replace(old,new)
               p.write_text(s)
           PY
+          echo "AIR_REAL_002_STAGE build_target"
           python3 build_landing.py | tee /tmp/air-real-002-build.txt
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
           grep -q 'Approved FREQ phone-only correction' site/index.html
@@ -73,14 +75,23 @@ jobs:
             echo "PATCH_ALREADY_PRESENT"
           else
             git commit -m "Factory: fix Frequency desktop hero framing (AIR-REAL-002)"
+            echo "AIR_REAL_002_STAGE push_target_branch"
             git push --force-with-lease origin "$TARGET_BRANCH"
           fi
+          echo "AIR_REAL_002_STAGE create_or_find_pr"
           PR_URL="$(gh pr list --repo "$TARGET_REPO" --head "$TARGET_BRANCH" --state open --json url --jq '.[0].url // empty')"
           if [ -z "$PR_URL" ]; then
             PR_URL="$(gh pr create --repo "$TARGET_REPO" --base main --head "$TARGET_BRANCH" --title "Factory: fix Frequency desktop hero framing (AIR-REAL-002)" --body "Bounded desktop-only Frequency hero correction. Existing <=760px mobile correction remains byte-for-byte in the build source. Build passed. No production deployment; merge remains a human gate.")"
           fi
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "AIR_REAL_002_PR $PR_URL"
+      - name: Persist diagnostic receipt on executor failure
+        if: failure() && steps.claim.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 116 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_REAL_002_DIAGNOSTIC_V0.1 run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} status=FAILED after_claim=true. Inspect run job logs for AIR_REAL_002_STAGE marker. Work order remains CLAIMED for idempotent RESUME; no manual reset."
+
       - name: Persist completion only after PR evidence
         if: steps.claim.outputs.decision != 'REPLAY'
         env:
