@@ -69,6 +69,22 @@ const CAPABILITIES = Object.freeze({
       'Integrate with the real map/evidence model and add tests; preserve no-device-geolocation.',
       'Do not deploy. Open a pull request to factory-sentinel-v021-make-home-real.'
     ].join(' ')
+  }),
+  'hq-v08-recovery-bootstrap': Object.freeze({
+    issueNumber: 147,
+    targetRepo: 'VeritasDesign/free-frequency-factory',
+    baseBranch: 'hq-v08-recovery-bootstrap-2026-10-07',
+    prerequisiteIssue: null,
+    instructions: [
+      'Factory bounded Builder task. Work only in apps/private-hq on the existing branch hq-v08-recovery-bootstrap-2026-10-07 in VeritasDesign/free-frequency-factory.',
+      'Goal: repair and prove the HQ v0.8 recovery/bootstrap path without touching production or the recovered browser donor state.',
+      'Preserve GET /api/hq-state as strict read-only: do not add DDL, bootstrap writes, seed writes, or fallback writes to GET.',
+      'Use an explicit write path for Shared Brain bootstrap and add focused tests for bootstrap, Chief read access, preservation-first reconciliation, and failure behavior.',
+      'Represent or document Capability/Part lineage and Endgame relationships without flattening historical ideas into automatic work orders.',
+      'Preserve Squirrel archive/history. Do not remove or rewrite institutional history. Do not perform browser Sync/Pull or mutate donor localStorage.',
+      'Changes are restricted to apps/private-hq. No secrets, Vercel settings, production aliases, deployment, production write, paid services, merge, or unrelated files.',
+      'Run the relevant HQ tests. Open a pull request back to hq-v08-recovery-bootstrap-2026-10-07 and report exact changed files, tests, and any remaining blockers.'
+    ].join(' ')
   })
 });
 
