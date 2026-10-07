@@ -27,6 +27,9 @@ jobs:
       - run: node --test .github/scripts/test-air-sentinel-001.cjs
       - run: node --check .github/scripts/air-sentinel-001-verify.mjs
   dispatch:
+    permissions:
+      contents: write
+      issues: write
     needs: contract
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -100,7 +103,8 @@ jobs:
       - name: Factory pushes branch, creates real PR and persists Result + Receipt
         if: steps.claim.outputs.decision != 'REPLAY'
         env:
-          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          BUILDER_PR_TOKEN: ${{ secrets.FACTORY_BUILDER_USER_TOKEN }}
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
           ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
