@@ -1,0 +1,154 @@
+{
+  "status": "PASS",
+  "source_commit": "e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b",
+  "preserved_files": [
+    "styles.css",
+    "index.html",
+    "api/nws.js",
+    "lib/nws-transport.js",
+    "src/adapters/nws-adapter.js",
+    "src/adapters/fixture-adapter.js"
+  ],
+  "browser_fixture_tests": [
+    {
+      "viewport": "mobile",
+      "size": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": [
+        "Home pixels identical",
+        "saved area restored",
+        "NWS coverage default; no synthetic markers",
+        "real alert sheet → Explain This → same selected sheet",
+        "explicit samples toggle",
+        "empty success distinguished from unknown",
+        "no horizontal overflow",
+        "no page errors"
+      ],
+      "api_calls": 14
+    },
+    {
+      "viewport": "desktop",
+      "size": {
+        "width": 1440,
+        "height": 1000
+      },
+      "checks": [
+        "Home pixels identical",
+        "saved area restored",
+        "NWS coverage default; no synthetic markers",
+        "real alert sheet → Explain This → same selected sheet",
+        "explicit samples toggle",
+        "empty success distinguished from unknown",
+        "no horizontal overflow",
+        "no page errors"
+      ],
+      "api_calls": 14
+    }
+  ],
+  "live_nws": {
+    "status": "PASS",
+    "fixture": false,
+    "county": "MIC111",
+    "representative_point": {
+      "lon": -84.3873,
+      "lat": 43.6473,
+      "method": "official-zone-bounds-midpoint"
+    },
+    "alert_count": 0,
+    "forecast_periods": 14,
+    "responses": [
+      {
+        "url": "/api/nws?op=zone&type=county&id=MIC111",
+        "status": 200
+      },
+      {
+        "url": "/api/nws?op=alerts&zone=MIC111",
+        "status": 200
+      },
+      {
+        "url": "/api/nws?op=point&lat=43.6473&lon=-84.3873",
+        "status": 200
+      },
+      {
+        "url": "/api/nws?op=forecast&office=DTX&x=16&y=91",
+        "status": 200
+      }
+    ],
+    "reads": [
+      {
+        "upstream": {
+          "url": "https://api.weather.gov/zones/county/MIC111",
+          "status": 200,
+          "requestStarted": "2026-10-07T12:36:01.440Z",
+          "responseReceived": "2026-10-07T12:36:01.461Z",
+          "headers": {
+            "date": "Wed, 07 Oct 2026 12:36:01 GMT",
+            "age": null,
+            "etag": "W/\"1776356541:dtagent10337260504112723F6xZ:dtagent10337260504112723F6xZ\"",
+            "lastModified": "Thu, 16 Apr 2026 16:22:19 GMT",
+            "cacheControl": "public, max-age=1374261, s-maxage=604800",
+            "retryAfter": null,
+            "requestId": "01a0cdc7-da9b-7e95-9315-f453310def22"
+          }
+        },
+        "representation_sha256": "2f7ece8258a4a173f0bfa67469fdfe5656945ccf4a980a0acdbf56819578e41d"
+      },
+      {
+        "upstream": {
+          "url": "https://api.weather.gov/alerts/active?zone=MIC111&status=actual",
+          "status": 200,
+          "requestStarted": "2026-10-07T12:36:01.464Z",
+          "responseReceived": "2026-10-07T12:36:01.494Z",
+          "headers": {
+            "date": "Wed, 07 Oct 2026 12:36:01 GMT",
+            "age": null,
+            "etag": "W/\"0a6b454adfa65990326849c483018859\"",
+            "lastModified": null,
+            "cacheControl": "public, max-age=4, s-maxage=5",
+            "retryAfter": null,
+            "requestId": "01a1165d-11ef-7eb6-9cff-c3d730740dbb"
+          }
+        },
+        "representation_sha256": "a4146bc1655d466fd41b49703dfc98fc77c121a2196ab589502513eed32e4ceb"
+      },
+      {
+        "upstream": {
+          "url": "https://api.weather.gov/points/43.6473,-84.3873",
+          "status": 200,
+          "requestStarted": "2026-10-07T12:36:01.496Z",
+          "responseReceived": "2026-10-07T12:36:01.508Z",
+          "headers": {
+            "date": "Wed, 07 Oct 2026 12:36:01 GMT",
+            "age": null,
+            "etag": null,
+            "lastModified": null,
+            "cacheControl": "public, max-age=86400, s-maxage=86400",
+            "retryAfter": null,
+            "requestId": "01a1165d-1373-7385-ad1a-109cda5a0874"
+          }
+        },
+        "representation_sha256": "86a33319941769015ddc6be706e4835598be5a90f280d45a98e663600f311a9e"
+      },
+      {
+        "upstream": {
+          "url": "https://api.weather.gov/gridpoints/DTX/16,91/forecast",
+          "status": 200,
+          "requestStarted": "2026-10-07T12:36:01.509Z",
+          "responseReceived": "2026-10-07T12:36:01.521Z",
+          "headers": {
+            "date": "Wed, 07 Oct 2026 12:36:01 GMT",
+            "age": null,
+            "etag": null,
+            "lastModified": "Wed, 07 Oct 2026 10:00:00 GMT",
+            "cacheControl": "public, max-age=3600, s-maxage=3600",
+            "retryAfter": null,
+            "requestId": "01a11606-cafb-7983-87ec-d19be47ed8e5"
+          }
+        },
+        "representation_sha256": "e1c09e635d9b363e827d3cb0fd1f62eb556fce73c0d0c42a7152fbc90f144ce2"
+      }
+    ]
+  }
+}

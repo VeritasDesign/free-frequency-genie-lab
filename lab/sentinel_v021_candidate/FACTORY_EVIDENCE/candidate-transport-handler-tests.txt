@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "allowed": 5,
+  "forbiddenZeroForbiddenUpstream": 8,
+  "redirectTargetFollowed": false,
+  "userAgent": "FreeFrequencySentinel/0.2",
+  "rateLimitCaptured": true,
+  "status304Captured": true
+}
+{
+  "pass": true,
+  "unsupportedMethods": 5,
+  "requestBodyRejected": true,
+  "crossSiteRejected": true
+}
