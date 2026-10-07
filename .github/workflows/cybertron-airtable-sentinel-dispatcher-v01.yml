@@ -29,6 +29,7 @@ jobs:
   dispatch:
     permissions:
       contents: write
+      pull-requests: write
       issues: write
     needs: contract
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -61,8 +62,12 @@ jobs:
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs
-      - name: Factory executes trusted bounded handler
+      - name: Reuse already-pushed verified candidate on the same attempt
+        id: reuse
         if: steps.claim.outputs.decision != 'REPLAY'
+        run: node .github/scripts/air-sentinel-001-resume.cjs
+      - name: Factory executes trusted bounded handler
+        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         run: |
           set -euo pipefail
           node .github/scripts/air-sentinel-001-builder.cjs target | tee evidence/builder.json
@@ -83,14 +88,14 @@ jobs:
           git clone --local target baseline
           git -C baseline checkout --detach e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
       - name: Browser verification with fixture and live NWS evidence separated
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         run: |
           set -euo pipefail
           npm install --prefix /tmp/sentinel-browser --no-audit --no-fund playwright@1.61.1
           /tmp/sentinel-browser/node_modules/.bin/playwright install --with-deps chromium
           PLAYWRIGHT_MODULE=/tmp/sentinel-browser/node_modules/playwright node .github/scripts/air-sentinel-001-verify.mjs target baseline
       - name: Upload immutable build and verification evidence
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         id: artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -104,8 +109,9 @@ jobs:
         if: steps.claim.outputs.decision != 'REPLAY'
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILDER_PR_TOKEN: ${{ secrets.FACTORY_BUILDER_USER_TOKEN }}
+          BUILDER_PR_TOKEN: ${{ github.token }}
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          REUSE_CANDIDATE: ${{ steps.reuse.outputs.reuse }}
           ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
           ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
         run: |
