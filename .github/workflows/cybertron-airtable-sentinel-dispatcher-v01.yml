@@ -1,0 +1,117 @@
+name: Cybertron Airtable Sentinel Dispatcher v0.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cybertron-airtable-sentinel-dispatcher-v01.yml'
+      - '.github/scripts/*sentinel-001*'
+      - '.github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/cybertron-airtable-sentinel-dispatcher-v01.yml'
+      - '.github/scripts/*sentinel-001*'
+      - '.github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs'
+  schedule:
+    - cron: '*/5 * * * *'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: air-sentinel-001-dispatch-1
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: node --test .github/scripts/test-air-sentinel-001.cjs
+      - run: node --check .github/scripts/air-sentinel-001-verify.mjs
+  dispatch:
+    needs: contract
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Verify exact authorization and recovered target
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          gh api repos/VeritasDesign/free-frequency-genie-lab/issues/139 > /tmp/sentinel-order.json
+          node - <<'JS'
+          const i=require('/tmp/sentinel-order.json');
+          if(i.user.login!=='VeritasDesign'||i.state!=='open'||i.title!=='AIR-SENTINEL-001 — recovered NWS real-first Sentinel build'||!i.body.includes('Infrastructure repair/extension is authorized; product implementation must be performed by the trusted Factory handler.'))throw Error('AUTHORIZATION_MISMATCH');
+          JS
+          gh auth setup-git --hostname github.com
+          gh repo clone VeritasDesign/free-frequency-genie-lab target
+          git -C target checkout --detach e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
+          test "$(git -C target rev-parse origin/factory-builder-95-forecast-coordinate-fix)" = e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
+      - name: Seed or consume exact authorized Airtable READY order
+        id: claim
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node .github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs
+      - name: Factory executes trusted bounded handler
+        if: steps.claim.outputs.decision != 'REPLAY'
+        run: |
+          set -euo pipefail
+          node .github/scripts/air-sentinel-001-builder.cjs target | tee evidence/builder.json
+          node --check target/lab/sentinel_v021_candidate/src/app.js
+          node --check target/lab/sentinel_v021_candidate/src/state.js
+          node --check target/lab/sentinel_v021_candidate/src/geo.js
+          node target/lab/sentinel_v021_candidate/FACTORY_TESTS.mjs | tee evidence/candidate-tests.txt
+          node target/lab/sentinel_v021_candidate/REAL_FIRST_TESTS.mjs | tee evidence/real-first-tests.txt
+          python3 lab/release_adapter/reconstruct_sentinel_v02_candidate.py --chunks-dir lab/release_adapter/sources/sentinel_v02_candidate_chunks --output /tmp/sentinel-v02.zip
+          python3 - <<'PY'
+          import zipfile
+          zipfile.ZipFile('/tmp/sentinel-v02.zip').extractall('/tmp/sentinel-base')
+          PY
+          (cd /tmp/sentinel-base/sentinel-v02-transport-only && npm test) | tee evidence/recovered-base-tests.txt
+          cp -r /tmp/sentinel-base/sentinel-v02-transport-only/tests target/lab/sentinel_v021_candidate/
+          (cd target/lab/sentinel_v021_candidate && node tests/nws-transport.test.mjs && node tests/nws-handler.test.mjs) | tee evidence/candidate-transport-handler-tests.txt
+          rm -rf target/lab/sentinel_v021_candidate/tests
+          git clone --local target baseline
+          git -C baseline checkout --detach e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
+      - name: Browser verification with fixture and live NWS evidence separated
+        if: steps.claim.outputs.decision != 'REPLAY'
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/sentinel-browser --no-audit --no-fund playwright@1.61.1
+          /tmp/sentinel-browser/node_modules/.bin/playwright install --with-deps chromium
+          PLAYWRIGHT_MODULE=/tmp/sentinel-browser/node_modules/playwright node .github/scripts/air-sentinel-001-verify.mjs target baseline
+      - name: Upload immutable build and verification evidence
+        if: steps.claim.outputs.decision != 'REPLAY'
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: air-sentinel-001-evidence
+          path: |
+            evidence
+            target/lab/sentinel_v021_candidate
+          retention-days: 30
+          if-no-files-found: error
+      - name: Factory pushes branch, creates real PR and persists Result + Receipt
+        if: steps.claim.outputs.decision != 'REPLAY'
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/air-sentinel-001-publish.cjs
+          node .github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs complete
+          gh issue comment 139 --repo VeritasDesign/free-frequency-genie-lab --body-file evidence/result-comment.txt
+      - name: Persist failure diagnostic; same attempt remains resumable
+        if: failure() && steps.claim.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 139 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_SENTINEL_001_DIAGNOSTIC run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} FAILED after claim; inspect exact logs. AIR-SENTINEL-001-DISPATCH-1 remains resumable. No product merge or production deployment."
