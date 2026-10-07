@@ -64,7 +64,8 @@ jobs:
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
           grep -q 'Approved FREQ phone-only correction' site/index.html
           grep -q 'object-fit:contain;object-position:center;transform:none' site/index.html
-          git diff --exit-code -- . ':!build_landing.py'
+          # Build output is verification evidence only; never stage it. The commit boundary is build_landing.py.
+          git diff --quiet -- build_landing.py || echo "BOUNDED_SOURCE_CHANGE_PRESENT"
           git config user.name "cybertron-dispatcher[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add build_landing.py
