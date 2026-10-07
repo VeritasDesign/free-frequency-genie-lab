@@ -92,8 +92,55 @@ jobs:
               }
             }
 
-            const payload=d.assignmentPayload(r);
             const builderToken=process.env.FACTORY_BUILDER_USER_TOKEN;
+            if(r.task_class==='hq-v08-recovery-bootstrap'){
+              if(!builderToken){
+                await github.rest.issues.createComment({
+                  owner,repo,issue_number:issue.number,
+                  body:'FACTORY_BUILDER_ASSIGNMENT_V0.1 '+JSON.stringify({
+                    version:'0.1',id:r.id,status:'BLOCKED',task_class:r.task_class,
+                    builder:'factory-free-deterministic-builder-v0.1',target_repo:cap.targetRepo,base_branch:cap.baseBranch,
+                    blocker:'missing_FACTORY_BUILDER_USER_TOKEN',production_write:false,deploy:false,execution_authority:'NONE'
+                  })
+                });
+                core.setFailed('Missing FACTORY_BUILDER_USER_TOKEN');
+                return;
+              }
+              try{
+                await github.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches',{
+                  owner:'VeritasDesign',repo:'free-frequency-factory',
+                  workflow_id:'factory-hq-free-deterministic-builder-v01.yml',
+                  ref:'main',inputs:{work_order:'AIR-HQ-001'},
+                  headers:{accept:'application/vnd.github+json',authorization:'Bearer '+builderToken,'X-GitHub-Api-Version':'2022-11-28'}
+                });
+              }catch(err){
+                const status=err?.status||err?.response?.status||'unknown';
+                await github.rest.issues.createComment({
+                  owner,repo,issue_number:issue.number,
+                  body:'FACTORY_BUILDER_ASSIGNMENT_V0.1 '+JSON.stringify({
+                    version:'0.1',id:r.id,status:'BLOCKED',task_class:r.task_class,
+                    builder:'factory-free-deterministic-builder-v0.1',target_repo:cap.targetRepo,base_branch:cap.baseBranch,
+                    blocker:'free_builder_dispatch_failed_http_'+status,production_write:false,deploy:false,execution_authority:'NONE'
+                  })
+                });
+                core.setFailed('Free deterministic HQ Builder dispatch failed HTTP '+status);
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner,repo,issue_number:issue.number,
+                body:d.ASSIGN_PREFIX+JSON.stringify({
+                  version:'0.1',id:r.id,status:'ASSIGNED',task_class:r.task_class,
+                  work_order:'AIR-HQ-001',builder:'factory-free-deterministic-builder-v0.1',
+                  target_repo:cap.targetRepo,base_branch:cap.baseBranch,router_run:runId,
+                  production_write:false,deploy:false,execution_authority:'BRANCH_PR_ONLY',
+                  next_gate:'Free deterministic Builder opens HQ recovery PR; Chief verifies evidence; no merge or deploy.'
+                })
+              });
+              core.info('FACTORY_FREE_BUILDER_DISPATCHED '+r.id+' -> AIR-HQ-001');
+              return;
+            }
+
+            const payload=d.assignmentPayload(r);
             if(!builderToken){
               await github.rest.issues.createComment({
                 owner,repo,issue_number:issue.number,

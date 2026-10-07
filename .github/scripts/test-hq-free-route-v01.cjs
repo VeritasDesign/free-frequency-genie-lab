@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const w=fs.readFileSync('.github/workflows/cybertron-factory-bounded-dispatch-v01.yml','utf8');
+assert(w.includes("r.task_class==='hq-v08-recovery-bootstrap'"));
+assert(w.includes("factory-hq-free-deterministic-builder-v01.yml"));
+assert(w.includes("inputs:{work_order:'AIR-HQ-001'}"));
+assert(w.includes("builder:'factory-free-deterministic-builder-v0.1'"));
+const hq=w.slice(w.indexOf("if(r.task_class==='hq-v08-recovery-bootstrap'"),w.indexOf("const payload=d.assignmentPayload(r);"));
+assert(!hq.includes("copilot-swe-agent"));
+assert(!hq.includes("/assignees"));
+assert(hq.includes("production_write:false"));
+assert(hq.includes("deploy:false"));
+console.log('RESULT 8/8 PASS HQ free route');
