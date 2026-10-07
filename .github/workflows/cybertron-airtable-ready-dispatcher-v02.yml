@@ -23,9 +23,9 @@ jobs:
         run: node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Preflight cross-repo capability and exact target
         env:
-          GH_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
-          test -n "$GH_TOKEN" || { echo "FACTORY_GITHUB_TOKEN_REQUIRED — AIR-REAL-002 remains READY"; exit 78; }
+          test -n "$GH_TOKEN" || { echo "FACTORY_CROSS_REPO_TOKEN_REQUIRED — AIR-REAL-002 remains READY"; exit 78; }
           PUSH="$(gh api "repos/$TARGET_REPO" --jq '.permissions.push')"
           test "$PUSH" = "true" || { echo "TARGET_PUSH_PERMISSION_REQUIRED — AIR-REAL-002 remains READY"; exit 78; }
           BLOB="$(gh api "repos/$TARGET_REPO/contents/$TARGET_PATH?ref=main" --jq '.sha')"
@@ -40,7 +40,7 @@ jobs:
         if: steps.claim.outputs.decision != 'REPLAY'
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.FACTORY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
           gh repo clone "$TARGET_REPO" target
           cd target
