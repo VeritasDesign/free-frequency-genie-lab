@@ -1,5 +1,5 @@
 name: Cybertron Airtable READY Dispatcher v0.2
-on:
+'on':
   workflow_dispatch: {}
   push:
     branches: [main]
