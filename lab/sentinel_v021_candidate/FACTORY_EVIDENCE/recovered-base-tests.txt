@@ -1,0 +1,21 @@
+
+> free-frequency-sentinel-v0-candidate@0.0.0-candidate test
+> node tests/contract.test.mjs && node tests/nws-ui-contract.test.mjs && node tests/nws-transport.test.mjs && node tests/nws-handler.test.mjs
+
+PASS Sentinel V0.2 core contract checks: mixed-origin labels, state restoration, no geolocation/credentials.
+PASS Sentinel V0.2 UI integration contract
+{
+  "pass": true,
+  "allowed": 5,
+  "forbiddenZeroForbiddenUpstream": 8,
+  "redirectTargetFollowed": false,
+  "userAgent": "FreeFrequencySentinel/0.2",
+  "rateLimitCaptured": true,
+  "status304Captured": true
+}
+{
+  "pass": true,
+  "unsupportedMethods": 5,
+  "requestBodyRejected": true,
+  "crossSiteRejected": true
+}

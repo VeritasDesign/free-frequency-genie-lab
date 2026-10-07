@@ -1,0 +1,10 @@
+{
+  "work_order": "AIR-SENTINEL-001",
+  "attempt": "AIR-SENTINEL-001-DISPATCH-1",
+  "source_commit": "e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b",
+  "run": "37622061577",
+  "production_write": false,
+  "deploy": false,
+  "artifact_id": "11481804592",
+  "artifact_digest": "89c741ab3e555c8d66fb8ebe3e19498ba3d3bdd66c25820523aa54eca870d275"
+}
