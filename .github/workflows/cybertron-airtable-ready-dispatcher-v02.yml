@@ -53,7 +53,11 @@ jobs:
           s=p.read_text()
           if '/* AIR-REAL-002 desktop Frequency hero correction */' not in s:
               anchor="mobile='''/* Approved FREQ phone-only correction */"
-              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */\\n@media(min-width:761px){\\n body[data-skin=\"frequency\"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}\\n}'''\\n"""
+              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */
+@media(min-width:761px){
+ body[data-skin="frequency"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}
+}'''
+"""
               if s.count(anchor)!=1: raise SystemExit('DESKTOP_PATCH_ANCHOR_MISMATCH')
               s=s.replace(anchor,desktop+anchor)
               old='html=html.replace("</style>",beta_css+mobile+"</style>")'
@@ -62,6 +66,8 @@ jobs:
               s=s.replace(old,new)
               p.write_text(s)
           PY
+          echo "AIR_REAL_002_STAGE syntax_check_target"
+          python3 -m py_compile build_landing.py
           echo "AIR_REAL_002_STAGE build_target"
           python3 build_landing.py | tee /tmp/air-real-002-build.txt
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
