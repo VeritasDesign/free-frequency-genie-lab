@@ -1,12 +1,14 @@
 name: Cybertron Airtable READY Dispatcher v0.2
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - '.github/workflows/cybertron-airtable-ready-dispatcher-v02.yml'
       - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
   schedule:
-    - cron: '*/5 * * * *'
+    # Offset from minute 0 to reduce GitHub scheduled-run congestion while preserving 5-minute cadence.
+    - cron: '2-57/5 * * * *'
 permissions:
   contents: read
   issues: write
