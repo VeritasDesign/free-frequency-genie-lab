@@ -53,7 +53,7 @@ jobs:
           s=p.read_text()
           if '/* AIR-REAL-002 desktop Frequency hero correction */' not in s:
               anchor="mobile='''/* Approved FREQ phone-only correction */"
-              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */\\n@media(min-width:761px){\\n body[data-skin=\\"frequency\\"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}\\n}'''\\n"""
+              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */\\n@media(min-width:761px){\\n body[data-skin=\"frequency\"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}\\n}'''\\n"""
               if s.count(anchor)!=1: raise SystemExit('DESKTOP_PATCH_ANCHOR_MISMATCH')
               s=s.replace(anchor,desktop+anchor)
               old='html=html.replace("</style>",beta_css+mobile+"</style>")'
