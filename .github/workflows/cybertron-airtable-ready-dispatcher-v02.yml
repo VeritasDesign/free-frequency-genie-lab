@@ -40,7 +40,7 @@ jobs:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Build bounded desktop-only fix and PR
-        if: ${{ steps.claim.outputs.decision != 'REPLAY' }}
+        if: "${{ steps.claim.outputs.decision != 'REPLAY' }}"
         id: pr
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "AIR_REAL_002_PR $PR_URL"
       - name: Persist diagnostic receipt on executor failure
-        if: ${{ failure() && steps.claim.outcome == 'success' }}
+        if: "${{ failure() && steps.claim.outcome == 'success' }}"
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
