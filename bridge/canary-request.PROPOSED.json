@@ -1,0 +1,14 @@
+{
+  "schema": "ChiefFactoryRequest/v0.1",
+  "work_order_id": "AIR-BRIDGE-001",
+  "correlation_id": "AIR-BRIDGE-001-CHIEF-1",
+  "contract_id": "chief-factory-read-checkpoint-v01",
+  "contract_digest": "65a1c6c55bddfcfb11273d26efdbffed545bfa8b693d64478e7619db64e0d8a2",
+  "authorization_ref": "AWAITING_EXPLICIT_ACTIVATION",
+  "task_class": "read-only-repository-checkpoint",
+  "evidence_refs": [
+    "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37571851951",
+    "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37622526751"
+  ],
+  "created_at": "SET_AT_AUTHORIZED_SUBMISSION"
+}

@@ -1,0 +1,63 @@
+{
+  "schema": "ChiefFactoryInfrastructureReceipt/v0.1",
+  "status": "READY_FOR_ACTIVATION_REVIEW",
+  "repository": "VeritasDesign/free-frequency-genie-lab",
+  "base_commit": "80759376a0f44e5ba702a7927b5ba4c5e404d81c",
+  "branch": "factory-chief-dispatch-bridge-v01",
+  "authority": "INFRASTRUCTURE_BRANCH_PR_ONLY",
+  "consumer_enabled": false,
+  "live_authorization": null,
+  "live_canary_submitted": false,
+  "production_write": false,
+  "product_merge": false,
+  "deploy": false,
+  "offline_tests": {
+    "command": "node --test --test-reporter=tap .github/scripts/test-chief-factory-dispatch-v01.cjs",
+    "passed": 65,
+    "failed": 0,
+    "runtime": "Node v24.19.0",
+    "syntax": "PASS",
+    "yaml": "PASS"
+  },
+  "preserved_records": [
+    {
+      "record": "rec9atwdaxgtqKgZj",
+      "work_order": "AIR-REAL-002",
+      "status": "COMPLETE",
+      "attempt": "AIR-REAL-002-DISPATCH-1",
+      "result": "AIR-REAL-002 desktop hero patch built and verified; https://github.com/VeritasDesign/free-frequency-landing-lab/pull/2"
+    },
+    {
+      "record": "recOniBsQ6c4wOfMY",
+      "work_order": "AIR-SENTINEL-001",
+      "status": "COMPLETE",
+      "attempt": "AIR-SENTINEL-001-DISPATCH-1",
+      "result": "https://github.com/VeritasDesign/free-frequency-genie-lab/pull/143"
+    },
+    {
+      "record": "recWEeaey6ELGw48P",
+      "work_order": "AIR-REAL-001",
+      "status": "COMPLETE",
+      "attempt": "AIR-REAL-001-DISPATCH-1",
+      "result": "AIR-REAL-001 artifact verified; https://github.com/VeritasDesign/free-frequency-genie-lab/pull/115"
+    }
+  ],
+  "canary": {
+    "contract": "chief-factory-read-checkpoint-v01",
+    "work_order": "AIR-BRIDGE-001",
+    "correlation": "AIR-BRIDGE-001-CHIEF-1",
+    "attempt": "AIR-BRIDGE-001-DISPATCH-1",
+    "contract_digest": "65a1c6c55bddfcfb11273d26efdbffed545bfa8b693d64478e7619db64e0d8a2",
+    "authorization": "NOT_GRANTED",
+    "target_commit": "80759376a0f44e5ba702a7927b5ba4c5e404d81c",
+    "authority": "READ_ONLY"
+  },
+  "next_gate": "Shannon explicit authorization for infrastructure activation and exact canary admission/submission. No merge or live execution performed.",
+  "limitations": [
+    "Airtable has no atomic CAS or uniqueness constraint; sole bridge writer required",
+    "No automatic push into an ended Chief chat",
+    "One exact read-only handler; no general product-build capability",
+    "Artifact retention 30 days; live connector and runtime execution not proven",
+    "Cron deliberately absent until activation review"
+  ]
+}

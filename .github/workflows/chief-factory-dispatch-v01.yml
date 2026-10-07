@@ -1,0 +1,71 @@
+name: Chief Factory Dispatch Bridge v0.1
+on:
+  pull_request:
+    paths:
+      - '.github/contracts/chief-factory-dispatch-v01.json'
+      - '.github/scripts/*chief-factory-dispatch-v01.cjs'
+      - '.github/workflows/chief-factory-dispatch-v01.yml'
+      - 'bridge/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: chief-factory-dispatch-v01-mailbox
+  cancel-in-progress: false
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: node --test .github/scripts/test-chief-factory-dispatch-v01.cjs
+      - run: node --check .github/scripts/chief-factory-dispatch-v01.cjs
+  consumer:
+    needs: offline
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Closed activation gate
+        id: gate
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const b=require('./.github/scripts/chief-factory-dispatch-v01.cjs');
+          const m=require('./.github/contracts/chief-factory-dispatch-v01.json');
+          b.validateManifest(m);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'enabled='+Boolean(m.consumer_enabled && m.contracts[0].authorization)+'\n');
+          console.log(m.consumer_enabled ? 'AUTHORIZATION_CHECK_REQUIRED' : 'DISABLED — explicit Shannon activation required');
+          JS
+      - name: Consume admitted work only
+        if: steps.gate.outputs.enabled == 'true'
+        id: consume
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/chief-factory-dispatch-v01.cjs consume
+      - name: Preserve checkpoint evidence
+        if: steps.consume.outputs.decision == 'BUILT'
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: chief-factory-bridge-evidence
+          path: evidence/bridge-checkpoint.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist Result and Receipt with independent readback
+        if: steps.consume.outputs.decision == 'BUILT'
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        run: node .github/scripts/chief-factory-dispatch-v01.cjs complete

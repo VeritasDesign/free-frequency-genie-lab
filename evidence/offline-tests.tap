@@ -1,0 +1,400 @@
+TAP version 13
+# Subtest: checked-in activation and authorization gates are closed
+ok 1 - checked-in activation and authorization gates are closed
+  ---
+  duration_ms: 2.758089
+  type: 'test'
+  ...
+# Subtest: disabled consumer never reads mailbox or obtains credentials
+ok 2 - disabled consumer never reads mailbox or obtains credentials
+  ---
+  duration_ms: 2.658356
+  type: 'test'
+  ...
+# Subtest: disabled submission never writes
+ok 3 - disabled submission never writes
+  ---
+  duration_ms: 2.563795
+  type: 'test'
+  ...
+# Subtest: positive staged → READY → CLAIMED → checkpoint → COMPLETE → independent retrieval
+ok 4 - positive staged → READY → CLAIMED → checkpoint → COMPLETE → independent retrieval
+  ---
+  duration_ms: 9.553153
+  type: 'test'
+  ...
+# Subtest: staging status is never executable
+ok 5 - staging status is never executable
+  ---
+  duration_ms: 0.893917
+  type: 'test'
+  ...
+# Subtest: unsupported task is rejected before writes
+ok 6 - unsupported task is rejected before writes
+  ---
+  duration_ms: 0.575335
+  type: 'test'
+  ...
+# Subtest: unknown contract is rejected before writes
+ok 7 - unknown contract is rejected before writes
+  ---
+  duration_ms: 0.955898
+  type: 'test'
+  ...
+# Subtest: mutated payload digest is rejected before writes
+ok 8 - mutated payload digest is rejected before writes
+  ---
+  duration_ms: 0.534995
+  type: 'test'
+  ...
+# Subtest: wrong correlation is rejected before writes
+ok 9 - wrong correlation is rejected before writes
+  ---
+  duration_ms: 1.681037
+  type: 'test'
+  ...
+# Subtest: missing approval is rejected before writes
+ok 10 - missing approval is rejected before writes
+  ---
+  duration_ms: 0.773989
+  type: 'test'
+  ...
+# Subtest: foreign approval ref is rejected before writes
+ok 11 - foreign approval ref is rejected before writes
+  ---
+  duration_ms: 0.63345
+  type: 'test'
+  ...
+# Subtest: stale approval is rejected before writes
+ok 12 - stale approval is rejected before writes
+  ---
+  duration_ms: 0.821617
+  type: 'test'
+  ...
+# Subtest: future request is rejected before writes
+ok 13 - future request is rejected before writes
+  ---
+  duration_ms: 0.432738
+  type: 'test'
+  ...
+# Subtest: request precedes approval is rejected before writes
+ok 14 - request precedes approval is rejected before writes
+  ---
+  duration_ms: 0.380064
+  type: 'test'
+  ...
+# Subtest: wrong repository is rejected before writes
+ok 15 - wrong repository is rejected before writes
+  ---
+  duration_ms: 0.514983
+  type: 'test'
+  ...
+# Subtest: wrong branch is rejected before writes
+ok 16 - wrong branch is rejected before writes
+  ---
+  duration_ms: 0.294711
+  type: 'test'
+  ...
+# Subtest: wrong source is rejected before writes
+ok 17 - wrong source is rejected before writes
+  ---
+  duration_ms: 0.369628
+  type: 'test'
+  ...
+# Subtest: wrong blob is rejected before writes
+ok 18 - wrong blob is rejected before writes
+  ---
+  duration_ms: 0.506568
+  type: 'test'
+  ...
+# Subtest: shell request is rejected before writes
+ok 19 - shell request is rejected before writes
+  ---
+  duration_ms: 0.49191
+  type: 'test'
+  ...
+# Subtest: repository supplied by request is rejected before writes
+ok 20 - repository supplied by request is rejected before writes
+  ---
+  duration_ms: 0.545073
+  type: 'test'
+  ...
+# Subtest: credential supplied by request is rejected before writes
+ok 21 - credential supplied by request is rejected before writes
+  ---
+  duration_ms: 0.703621
+  type: 'test'
+  ...
+# Subtest: parameters inject shell is rejected before writes
+ok 22 - parameters inject shell is rejected before writes
+  ---
+  duration_ms: 0.384043
+  type: 'test'
+  ...
+# Subtest: unknown worker is rejected before writes
+ok 23 - unknown worker is rejected before writes
+  ---
+  duration_ms: 0.584986
+  type: 'test'
+  ...
+# Subtest: untrusted mailbox is rejected before writes
+ok 24 - untrusted mailbox is rejected before writes
+  ---
+  duration_ms: 0.799545
+  type: 'test'
+  ...
+# Subtest: manifest duplicate contract is rejected before writes
+ok 25 - manifest duplicate contract is rejected before writes
+  ---
+  duration_ms: 0.911009
+  type: 'test'
+  ...
+# Subtest: wrong approver is rejected before writes
+ok 26 - wrong approver is rejected before writes
+  ---
+  duration_ms: 0.637749
+  type: 'test'
+  ...
+# Subtest: production_write escalation rejected
+ok 27 - production_write escalation rejected
+  ---
+  duration_ms: 0.594759
+  type: 'test'
+  ...
+# Subtest: deploy escalation rejected
+ok 28 - deploy escalation rejected
+  ---
+  duration_ms: 0.479357
+  type: 'test'
+  ...
+# Subtest: merge escalation rejected
+ok 29 - merge escalation rejected
+  ---
+  duration_ms: 0.486455
+  type: 'test'
+  ...
+# Subtest: branch_pr escalation rejected
+ok 30 - branch_pr escalation rejected
+  ---
+  duration_ms: 0.654264
+  type: 'test'
+  ...
+# Subtest: paid_services escalation rejected
+ok 31 - paid_services escalation rejected
+  ---
+  duration_ms: 1.050947
+  type: 'test'
+  ...
+# Subtest: duplicate ID across all rows blocks before any claim
+ok 32 - duplicate ID across all rows blocks before any claim
+  ---
+  duration_ms: 1.01463
+  type: 'test'
+  ...
+# Subtest: concurrent submissions detect duplicate staging and never execute
+ok 33 - concurrent submissions detect duplicate staging and never execute
+  ---
+  duration_ms: 1.828543
+  type: 'test'
+  ...
+# Subtest: unsupported namespaced row blocks batch before a supported row is claimed
+ok 34 - unsupported namespaced row blocks batch before a supported row is claimed
+  ---
+  duration_ms: 1.225153
+  type: 'test'
+  ...
+# Subtest: historical completed records are byte-identical after execution
+ok 35 - historical completed records are byte-identical after execution
+  ---
+  duration_ms: 3.306435
+  type: 'test'
+  ...
+# Subtest: foreign claim rejected
+ok 36 - foreign claim rejected
+  ---
+  duration_ms: 2.328734
+  type: 'test'
+  ...
+# Subtest: mutated READY envelope fails closed
+ok 37 - mutated READY envelope fails closed
+  ---
+  duration_ms: 1.411549
+  type: 'test'
+  ...
+# Subtest: live source drift blocks before CLAIMED
+ok 38 - live source drift blocks before CLAIMED
+  ---
+  duration_ms: 1.625285
+  type: 'test'
+  ...
+# Subtest: interrupted claim after durable write resumes same attempt
+ok 39 - interrupted claim after durable write resumes same attempt
+  ---
+  duration_ms: 2.723454
+  type: 'test'
+  ...
+# Subtest: interrupted checkpoint after durable write reuses output, no worker rerun
+ok 40 - interrupted checkpoint after durable write reuses output, no worker rerun
+  ---
+  duration_ms: 2.132782
+  type: 'test'
+  ...
+# Subtest: interrupted checkpoint before persistence repeats only a read-only worker
+ok 41 - interrupted checkpoint before persistence repeats only a read-only worker
+  ---
+  duration_ms: 4.177246
+  type: 'test'
+  ...
+# Subtest: interrupted terminal status write finalizes receipt without rebuilding
+ok 42 - interrupted terminal status write finalizes receipt without rebuilding
+  ---
+  duration_ms: 2.710722
+  type: 'test'
+  ...
+# Subtest: terminal replay ignores mutable progress, expired approval, obsolete preflight
+ok 43 - terminal replay ignores mutable progress, expired approval, obsolete preflight
+  ---
+  duration_ms: 5.053758
+  type: 'test'
+  ...
+# Subtest: terminal resubmission is replay and does not reset status or attempt
+ok 44 - terminal resubmission is replay and does not reset status or attempt
+  ---
+  duration_ms: 2.96221
+  type: 'test'
+  ...
+# Subtest: conflicting resubmission blocked
+ok 45 - conflicting resubmission blocked
+  ---
+  duration_ms: 1.925626
+  type: 'test'
+  ...
+# Subtest: mismatched terminal receipt fails closed
+ok 46 - mismatched terminal receipt fails closed
+  ---
+  duration_ms: 5.967082
+  type: 'test'
+  ...
+# Subtest: corrupted checkpoint digest rejected without rerun
+ok 47 - corrupted checkpoint digest rejected without rerun
+  ---
+  duration_ms: 2.025334
+  type: 'test'
+  ...
+# Subtest: artifact mismatch prevents completion
+ok 48 - artifact mismatch prevents completion
+  ---
+  duration_ms: 1.844617
+  type: 'test'
+  ...
+# Subtest: independent retrieval requires successful run
+ok 49 - independent retrieval requires successful run
+  ---
+  duration_ms: 4.699348
+  type: 'test'
+  ...
+# Subtest: independent retrieval rejects wrong requested correlation
+ok 50 - independent retrieval rejects wrong requested correlation
+  ---
+  duration_ms: 4.110292
+  type: 'test'
+  ...
+# Subtest: independent retrieval rejects altered source evidence
+ok 51 - independent retrieval rejects altered source evidence
+  ---
+  duration_ms: 4.242351
+  type: 'test'
+  ...
+# Subtest: staging readback corruption never publishes READY
+ok 52 - staging readback corruption never publishes READY
+  ---
+  duration_ms: 0.72284
+  type: 'test'
+  ...
+# Subtest: Airtable runtime list paginates; HTTP errors and redirects fail closed
+ok 53 - Airtable runtime list paginates; HTTP errors and redirects fail closed
+  ---
+  duration_ms: 0.441507
+  type: 'test'
+  ...
+# Subtest: GitHub runtime artifact provenance and success checks
+ok 54 - GitHub runtime artifact provenance and success checks
+  ---
+  duration_ms: 0.375958
+  type: 'test'
+  ...
+# Subtest: workflow consumer gate cannot run on PRs, has no live scheduling yet
+ok 55 - workflow consumer gate cannot run on PRs, has no live scheduling yet
+  ---
+  duration_ms: 0.403714
+  type: 'test'
+  ...
+# Subtest: terminal resubmission after authorization expiry returns existing receipt state
+ok 56 - terminal resubmission after authorization expiry returns existing receipt state
+  ---
+  duration_ms: 2.609525
+  type: 'test'
+  ...
+# Subtest: duplicate injected after claim is caught before worker
+ok 57 - duplicate injected after claim is caught before worker
+  ---
+  duration_ms: 1.211964
+  type: 'test'
+  ...
+# Subtest: corrupt claim readback is rejected before worker
+ok 58 - corrupt claim readback is rejected before worker
+  ---
+  duration_ms: 2.294776
+  type: 'test'
+  ...
+# Subtest: receipt-write failure before persistence retains reusable checkpoint
+ok 59 - receipt-write failure before persistence retains reusable checkpoint
+  ---
+  duration_ms: 2.167169
+  type: 'test'
+  ...
+# Subtest: receipt-write failure after persistence retains valid pending terminal checkpoint
+ok 60 - receipt-write failure after persistence retains valid pending terminal checkpoint
+  ---
+  duration_ms: 2.260235
+  type: 'test'
+  ...
+# Subtest: successful status write with lost response yields terminal replay
+ok 61 - successful status write with lost response yields terminal replay
+  ---
+  duration_ms: 4.565319
+  type: 'test'
+  ...
+# Subtest: completion with duplicate mailbox identity blocks before terminal write
+ok 62 - completion with duplicate mailbox identity blocks before terminal write
+  ---
+  duration_ms: 2.660862
+  type: 'test'
+  ...
+# Subtest: expiry before resumed execution blocks without changing attempt
+ok 63 - expiry before resumed execution blocks without changing attempt
+  ---
+  duration_ms: 1.320202
+  type: 'test'
+  ...
+# Subtest: malformed payload and orphan result block before worker
+ok 64 - malformed payload and orphan result block before worker
+  ---
+  duration_ms: 0.98299
+  type: 'test'
+  ...
+# Subtest: raw source mismatch is rejected by bounded worker output
+ok 65 - raw source mismatch is rejected by bounded worker output
+  ---
+  duration_ms: 0.326298
+  type: 'test'
+  ...
+1..65
+# tests 65
+# suites 0
+# pass 65
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 260.787077

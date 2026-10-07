@@ -1,0 +1,164 @@
+{
+  "base": "app01sBuNbRyjVt47",
+  "schema": {
+    "tables": [
+      {
+        "tableId": "tbl3ZPAJF3FvbR90p",
+        "fields": [
+          {
+            "id": "fldn5b6yeYYRMPSaM",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldgOSvL9pxpNRL2I",
+            "type": "singleSelect",
+            "config": {
+              "choices": [
+                {
+                  "id": "sel2RCHSr6IX57ukM",
+                  "name": "READY",
+                  "color": "grayLight2"
+                },
+                {
+                  "id": "selEELBJ7cjQ1FPgb",
+                  "name": "CLAIMED",
+                  "color": "grayLight2"
+                },
+                {
+                  "id": "selatO6nDFvJdUwgV",
+                  "name": "RUNNING",
+                  "color": "grayLight2"
+                },
+                {
+                  "id": "selc0yd45h0YTA5hB",
+                  "name": "COMPLETE",
+                  "color": "grayLight2"
+                },
+                {
+                  "id": "sel3ZLdA4TKQwS680",
+                  "name": "BLOCKED",
+                  "color": "grayLight2"
+                },
+                {
+                  "id": "selKNUOf60a5ETUvL",
+                  "name": "AWAITING_APPROVAL",
+                  "color": "grayLight2"
+                }
+              ]
+            }
+          },
+          {
+            "id": "fldHLUnihNBexSkZn",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldlnFmNjotAB08qm",
+            "type": "multilineText"
+          },
+          {
+            "id": "fldZz2dIKt7hoxxdD",
+            "type": "number",
+            "config": {
+              "precision": 0
+            }
+          },
+          {
+            "id": "fldNVK0fO1mlCvRVJ",
+            "type": "number",
+            "config": {
+              "precision": 0
+            }
+          },
+          {
+            "id": "fldyMDCSTEW46XKZV",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldjB7m1c9jaMhNKR",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldO9RGHuCX7Bv0q0",
+            "type": "multilineText"
+          },
+          {
+            "id": "flde4kea7ckvPVn2g",
+            "type": "multilineText"
+          },
+          {
+            "id": "fldTpHDML0gVrtGk5",
+            "type": "multilineText"
+          }
+        ]
+      }
+    ]
+  },
+  "mapping": {
+    "tables": [
+      {
+        "id": "tbl3ZPAJF3FvbR90p",
+        "name": "Work Orders",
+        "description": "Isolated zero-consequence ROCK for proving persistent ChatGPT orchestration state. No production authority.",
+        "primaryFieldId": "fldn5b6yeYYRMPSaM",
+        "fields": [
+          {
+            "id": "fldn5b6yeYYRMPSaM",
+            "name": "Work Order ID",
+            "type": "singleLineText",
+            "description": "Immutable ROCK work-order identifier."
+          },
+          {
+            "id": "fldgOSvL9pxpNRL2I",
+            "name": "Status",
+            "type": "singleSelect"
+          },
+          {
+            "id": "fldHLUnihNBexSkZn",
+            "name": "Task Class",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldlnFmNjotAB08qm",
+            "name": "Payload",
+            "type": "multilineText"
+          },
+          {
+            "id": "fldZz2dIKt7hoxxdD",
+            "name": "Step",
+            "type": "number"
+          },
+          {
+            "id": "fldNVK0fO1mlCvRVJ",
+            "name": "Max Attempts",
+            "type": "number"
+          },
+          {
+            "id": "fldyMDCSTEW46XKZV",
+            "name": "Attempt ID",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldjB7m1c9jaMhNKR",
+            "name": "Claimed By",
+            "type": "singleLineText"
+          },
+          {
+            "id": "fldO9RGHuCX7Bv0q0",
+            "name": "Receipt",
+            "type": "multilineText"
+          },
+          {
+            "id": "flde4kea7ckvPVn2g",
+            "name": "Result",
+            "type": "multilineText"
+          },
+          {
+            "id": "fldTpHDML0gVrtGk5",
+            "name": "Next Action",
+            "type": "multilineText"
+          }
+        ]
+      }
+    ]
+  }
+}
