@@ -9,6 +9,7 @@ on:
     - cron: '*/5 * * * *'
 permissions:
   contents: read
+  issues: write
 jobs:
   dispatch-air-real-002:
     runs-on: ubuntu-latest
