@@ -43,6 +43,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
+          gh auth setup-git --hostname github.com
           echo "AIR_REAL_002_STAGE clone_target"
           gh repo clone "$TARGET_REPO" target
           cd target
