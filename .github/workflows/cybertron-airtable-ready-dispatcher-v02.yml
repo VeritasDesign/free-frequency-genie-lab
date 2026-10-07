@@ -38,7 +38,7 @@ jobs:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Build bounded desktop-only fix and PR
-        if: "${{ steps.claim.outputs.decision != 'REPLAY' }}"
+        if: steps.claim.outputs.decision != 'REPLAY'
         id: pr
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
@@ -66,9 +66,7 @@ jobs:
               s=s.replace(old,new)
               p.write_text(s)
           PY
-          echo "AIR_REAL_002_STAGE syntax_check_target"
-          python3 -m py_compile build_landing.py
-          echo "AIR_REAL_002_STAGE build_target"
+          echo "AIR_REAL_002_STAGE syntax_check_target"\n          python3 -m py_compile build_landing.py\n          echo "AIR_REAL_002_STAGE build_target"
           python3 build_landing.py | tee /tmp/air-real-002-build.txt
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
           grep -q 'Approved FREQ phone-only correction' site/index.html
@@ -93,14 +91,14 @@ jobs:
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "AIR_REAL_002_PR $PR_URL"
       - name: Persist diagnostic receipt on executor failure
-        if: "${{ failure() && steps.claim.outcome == 'success' }}"
+        if: failure() && steps.claim.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment 116 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_REAL_002_DIAGNOSTIC_V0.1 run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} status=FAILED after_claim=true. Inspect run job logs for AIR_REAL_002_STAGE marker. Work order remains CLAIMED for idempotent RESUME; no manual reset."
 
       - name: Persist completion only after PR evidence
-        if: ${{ steps.claim.outputs.decision != 'REPLAY' }}
+        if: steps.claim.outputs.decision != 'REPLAY'
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
