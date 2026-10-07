@@ -1,0 +1,54 @@
+{
+  "schema": "ChiefFactoryManifest/v0.1",
+  "consumer_enabled": false,
+  "namespace": "AIR-BRIDGE-",
+  "mailbox": {
+    "base": "app01sBuNbRyjVt47",
+    "table": "tbl3ZPAJF3FvbR90p",
+    "fields": {
+      "id": "fldn5b6yeYYRMPSaM",
+      "status": "fldgOSvL9pxpNRL2I",
+      "task": "fldHLUnihNBexSkZn",
+      "payload": "fldlnFmNjotAB08qm",
+      "attempt": "fldyMDCSTEW46XKZV",
+      "claimed": "fldjB7m1c9jaMhNKR",
+      "receipt": "fldO9RGHuCX7Bv0q0",
+      "result": "flde4kea7ckvPVn2g",
+      "next": "fldTpHDML0gVrtGk5"
+    }
+  },
+  "contracts": [
+    {
+      "id": "chief-factory-read-checkpoint-v01",
+      "work_order_id": "AIR-BRIDGE-001",
+      "correlation_id": "AIR-BRIDGE-001-CHIEF-1",
+      "attempt_id": "AIR-BRIDGE-001-DISPATCH-1",
+      "task_class": "read-only-repository-checkpoint",
+      "worker": "repository-checkpoint-v01",
+      "target": {
+        "repository": "VeritasDesign/free-frequency-genie-lab",
+        "base_branch": "main",
+        "source_commit": "80759376a0f44e5ba702a7927b5ba4c5e404d81c",
+        "source_blobs": {
+          ".github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs": "95c031746c29d329f2d049b0cf5cce0b6658e456",
+          ".github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs": "5cc5e89723fd99b8920babbcbcaa16052f16757c"
+        }
+      },
+      "authority": {
+        "scope": "READ_ONLY",
+        "production_write": false,
+        "deploy": false,
+        "merge": false,
+        "branch_pr": false,
+        "paid_services": false
+      },
+      "parameters": {},
+      "prerequisites": [],
+      "evidence_refs": [
+        "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37571851951",
+        "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37622526751"
+      ],
+      "authorization": null
+    }
+  ]
+}
