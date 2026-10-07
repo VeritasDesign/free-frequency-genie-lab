@@ -1,6 +1,6 @@
 {
   "schema": "ChiefFactoryManifest/v0.1",
-  "consumer_enabled": false,
+  "consumer_enabled": true,
   "namespace": "AIR-BRIDGE-",
   "mailbox": {
     "base": "app01sBuNbRyjVt47",
@@ -48,7 +48,13 @@
         "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37571851951",
         "https://github.com/VeritasDesign/free-frequency-genie-lab/actions/runs/37622526751"
       ],
-      "authorization": null
+      "authorization": {
+        "ref": "shannon-activation:20261007-AIR-BRIDGE-001",
+        "approved_by": "Shannon",
+        "approved_at": "2026-10-07T15:38:10Z",
+        "expires_at": "2026-10-08T15:38:10Z",
+        "contract_digest": "65a1c6c55bddfcfb11273d26efdbffed545bfa8b693d64478e7619db64e0d8a2"
+      }
     }
   ]
 }

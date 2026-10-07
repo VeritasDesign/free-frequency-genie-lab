@@ -7,6 +7,8 @@ on:
       - '.github/workflows/chief-factory-dispatch-v01.yml'
       - 'bridge/**'
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 permissions:
   contents: read
   actions: read
@@ -27,7 +29,7 @@ jobs:
       - run: node --check .github/scripts/chief-factory-dispatch-v01.cjs
   consumer:
     needs: offline
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
