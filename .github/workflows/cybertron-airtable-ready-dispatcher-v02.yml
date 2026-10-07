@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/cybertron-airtable-ready-dispatcher-v02.yml'
-      - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'\n      - '.github/scripts/air-real-002-frequency-hero-patch.py'
   schedule:
     - cron: '*/5 * * * *'
 permissions:
@@ -47,26 +47,7 @@ jobs:
           gh repo clone "$TARGET_REPO" target
           cd target
           git checkout -B "$TARGET_BRANCH" origin/main
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('build_landing.py')
-          s=p.read_text()
-          if '/* AIR-REAL-002 desktop Frequency hero correction */' not in s:
-              anchor="mobile='''/* Approved FREQ phone-only correction */"
-              desktop="""desktop='''/* AIR-REAL-002 desktop Frequency hero correction */
-@media(min-width:761px){
- body[data-skin="frequency"] .heroArt #hero-scene{object-fit:contain;object-position:center;transform:none}
-}'''
-"""
-              if s.count(anchor)!=1: raise SystemExit('DESKTOP_PATCH_ANCHOR_MISMATCH')
-              s=s.replace(anchor,desktop+anchor)
-              old='html=html.replace("</style>",beta_css+mobile+"</style>")'
-              new='html=html.replace("</style>",beta_css+desktop+mobile+"</style>")'
-              if s.count(old)!=1: raise SystemExit('STYLE_COMPOSE_ANCHOR_MISMATCH')
-              s=s.replace(old,new)
-              p.write_text(s)
-          PY
-          echo "AIR_REAL_002_STAGE syntax_check_target"\n          python3 -m py_compile build_landing.py\n          echo "AIR_REAL_002_STAGE build_target"
+          python3 "$GITHUB_WORKSPACE/.github/scripts/air-real-002-frequency-hero-patch.py"\n          echo "AIR_REAL_002_STAGE syntax_check_target"\n          python3 -m py_compile build_landing.py\n          echo "AIR_REAL_002_STAGE build_target"
           python3 build_landing.py | tee /tmp/air-real-002-build.txt
           grep -q 'AIR-REAL-002 desktop Frequency hero correction' site/index.html
           grep -q 'Approved FREQ phone-only correction' site/index.html
