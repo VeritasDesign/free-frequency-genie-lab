@@ -107,10 +107,10 @@ jobs:
                 return;
               }
               try{
-                await github.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches',{
+                await github.request('POST /repos/{owner}/{repo}/issues',{
                   owner:'VeritasDesign',repo:'free-frequency-factory',
-                  workflow_id:'factory-hq-free-deterministic-builder-v01.yml',
-                  ref:'main',inputs:{work_order:'AIR-HQ-001'},
+                  title:'FACTORY HQ FREE DISPATCH — AIR-HQ-001',
+                  body:'Exact free deterministic Factory dispatch for AIR-HQ-001. Source: VeritasDesign/free-frequency-genie-lab#147. Target branch: hq-v08-recovery-bootstrap-2026-10-07. Authority: BRANCH_PR_ONLY. No merge. No deploy.',
                   headers:{accept:'application/vnd.github+json',authorization:'Bearer '+builderToken,'X-GitHub-Api-Version':'2022-11-28'}
                 });
               }catch(err){
@@ -120,7 +120,7 @@ jobs:
                   body:'FACTORY_BUILDER_ASSIGNMENT_V0.1 '+JSON.stringify({
                     version:'0.1',id:r.id,status:'BLOCKED',task_class:r.task_class,
                     builder:'factory-free-deterministic-builder-v0.1',target_repo:cap.targetRepo,base_branch:cap.baseBranch,
-                    blocker:'free_builder_dispatch_failed_http_'+status,production_write:false,deploy:false,execution_authority:'NONE'
+                    blocker:'free_builder_issue_dispatch_failed_http_'+status,production_write:false,deploy:false,execution_authority:'NONE'
                   })
                 });
                 core.setFailed('Free deterministic HQ Builder dispatch failed HTTP '+status);
