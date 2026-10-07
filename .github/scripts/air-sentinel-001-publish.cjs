@@ -2,7 +2,8 @@
 const fs=require('fs'),cp=require('child_process'),crypto=require('crypto');
 const d=require('./cybertron-airtable-sentinel-dispatcher-v01.cjs'),b=require('./air-sentinel-001-builder.cjs');
 const repo='VeritasDesign/free-frequency-genie-lab',branch='factory-air-sentinel-001-real-first',base='factory-builder-95-forecast-coordinate-fix';
-const run=(a,cwd)=>cp.execFileSync(a[0],a.slice(1),{cwd,encoding:'utf8'}).trim();
+const run=(a,cwd)=>cp.execFileSync(a[0],a.slice(1),{cwd,encoding:'utf8',env:a[0]==='gh'?{...process.env,GH_TOKEN:process.env.BUILDER_PR_TOKEN}:process.env}).trim();
+if(!process.env.BUILDER_PR_TOKEN)throw Error('EXISTING_BUILDER_PR_TOKEN_REQUIRED');
 const v=JSON.parse(fs.readFileSync('evidence/verification.json'));if(v.status!=='PASS'||v.live_nws.status!=='PASS'||v.browser_fixture_tests.length!==2)throw Error('VERIFICATION_REQUIRED');
 const e='target/'+b.ROOT+'FACTORY_EVIDENCE';fs.mkdirSync(e,{recursive:true});
 for(const f of ['verification.json','live-nws-envelopes.json','candidate-tests.txt','real-first-tests.txt','recovered-base-tests.txt','candidate-transport-handler-tests.txt'])fs.copyFileSync('evidence/'+f,e+'/'+f);
