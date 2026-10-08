@@ -1,0 +1,69 @@
+{
+  "schema": "free-frequency-part/v1",
+  "id": "visual-item-understanding",
+  "name": "Baby Eyes",
+  "aliases": [
+    "photo item grouping",
+    "resale item identification",
+    "visual resale intake",
+    "item understanding",
+    "group images structured",
+    "product photo analysis"
+  ],
+  "status": "SOURCE_RECOVERED_RUNTIME_NOT_RETESTED",
+  "problem": "Convert sequential photos of resale goods into coherent physical-item groupings and structured candidate listing information without treating detail photos as separate sellable objects.",
+  "input": {
+    "images": "Nonempty ordered array of image URLs submitted by a caller; endpoint requires configured AI Gateway key."
+  },
+  "output": {
+    "groups": "Array of groups with name, confidence High/Medium/Low, image_indexes, reason, condition, suggested_title, item_specifics, description, verify, hidden_value",
+    "aiUsage": "Provider usage when supplied",
+    "structured": "true on successful result"
+  },
+  "implementation": {
+    "repo": "VeritasDesign/free-frequency-factory",
+    "branch": "main",
+    "path": "apps/bucklist-listing-agent/api/group-images-structured.js",
+    "blob_sha": "c249675848e1d066f61a68b0008a333e2ac61d08",
+    "url": "https://github.com/VeritasDesign/free-frequency-factory/blob/main/apps/bucklist-listing-agent/api/group-images-structured.js",
+    "model_default": "google/gemini-2.5-flash-lite",
+    "model_override": "AI_MODEL",
+    "external_service": "Vercel AI Gateway"
+  },
+  "evidence": {
+    "source_verified": true,
+    "runtime_verified_this_experiment": false,
+    "provider_output_verified_this_experiment": false,
+    "existing_consumer_inferred_from_path": "BuckList / Listing Agent",
+    "other_consumers_proposed_not_proven": [
+      "Do I Buy This?",
+      "Justine",
+      "Echo",
+      "Wearable Lab"
+    ]
+  },
+  "guards": [
+    "POST only",
+    "Reject missing key/images",
+    "Require every input photo index exactly once",
+    "No zero-image groups",
+    "Instruct model not to invent rarity/authenticity/dates/variants",
+    "Hidden value blank unless concrete attribute warrants checking",
+    "Return 502 on invalid model grouping or parse failure"
+  ],
+  "limits": [
+    "Source inspection does not prove live endpoint or accuracy",
+    "Model may hallucinate; human verification needed",
+    "Cannot assert authenticity, valuation, or safety from output alone",
+    "Gateway use may incur cost; no live calls authorized for this proof",
+    "Category-aware autofill candidate PRs are distinct from this main-branch implementation"
+  ],
+  "reuse_validation": [
+    "Confirm current implementation commit/blob and endpoint behavior",
+    "Run isolated fixture with expected grouping and invalid-coverage case, without paid provider calls",
+    "Prove field mapping in target consumer; unknown fields remain blank",
+    "Human review before publishing or purchasing",
+    "Retest accuracy and costs before a new machine consumes the Part"
+  ],
+  "part_identity_rule": "The Part is visual item understanding, not the Listing Agent product or the endpoint filename."
+}
