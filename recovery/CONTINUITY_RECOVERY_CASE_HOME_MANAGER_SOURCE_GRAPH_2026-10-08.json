@@ -1,0 +1,104 @@
+{
+  "schema": "free-frequency-continuity-source-graph/v1",
+  "case_id": "home-manager-watch-remind-act-2026-10-08",
+  "status": "RECOVERED_WITH_UNKNOWN_PROVENANCE",
+  "nodes": [
+    {
+      "id": "chat-2026-09-05-home-manager",
+      "source_type": "chat_conversation",
+      "source_date": "2026-09-05",
+      "recovered_timestamp": "2026-09-05T17:20:39Z",
+      "stable_external_identifier": null,
+      "title": "Justine household assistance / bounded visual watch",
+      "evidence_status": "RECOVERED_ACCOUNT_CONTEXT",
+      "anchors": [
+        "Justine",
+        "Autumn",
+        "watch this window",
+        "five minutes",
+        "WATCH / REMIND / ACT"
+      ],
+      "limitation": "No stable external chat source identifier preserved in this checkpoint."
+    },
+    {
+      "id": "file-cybertron-reconstruction-delta-04-2026-09-23",
+      "source_type": "library_file",
+      "source_date": "2026-09-23",
+      "title": "CYBERTRON_RECONSTRUCTION_DELTA_04_2026-09-23.md",
+      "evidence_status": "DURABLE_FILE",
+      "anchors": [
+        "Home Manager recovery work captured",
+        "#59",
+        "WATCH / REMIND / ACT",
+        "Action Gate",
+        "No physical/device action authorized"
+      ]
+    },
+    {
+      "id": "file-echo-main-handoff-2026-09-23",
+      "source_type": "library_file",
+      "source_date": "2026-09-23",
+      "title": "ECHO_MAIN_HANDOFF_2026-09-23.md",
+      "evidence_status": "DURABLE_FILE",
+      "anchors": [
+        "HOME MANAGER",
+        "#59",
+        "WATCH / REMIND / ACT",
+        "Action Gate",
+        "no similar = lineage"
+      ]
+    },
+    {
+      "id": "github-free-frequency-factory-issue-59",
+      "source_type": "github_issue",
+      "source_date": "2026-09-23",
+      "stable_external_identifier": "VeritasDesign/free-frequency-factory#59",
+      "url": "https://github.com/VeritasDesign/free-frequency-factory/issues/59",
+      "title": "RECOVERY: Persist Home Manager WATCH / REMIND / ACT contract",
+      "evidence_status": "DURABLE_PROJECT_RECORD"
+    },
+    {
+      "id": "github-free-frequency-factory-issue-59-comment-5802556293",
+      "source_type": "github_issue_comment",
+      "source_date": "2026-09-23",
+      "stable_external_identifier": "5802556293",
+      "url": "https://github.com/VeritasDesign/free-frequency-factory/issues/59#issuecomment-5802556293",
+      "title": "Additional prior-conversation recovery evidence",
+      "evidence_status": "DURABLE_PROJECT_RECORD",
+      "limitation": "Comment does not identify the source conversation by timestamp or stable conversation ID."
+    }
+  ],
+  "edges": [
+    {
+      "from": "file-cybertron-reconstruction-delta-04-2026-09-23",
+      "to": "github-free-frequency-factory-issue-59",
+      "type": "EXPLICITLY_REFERENCES",
+      "status": "PROVEN"
+    },
+    {
+      "from": "file-echo-main-handoff-2026-09-23",
+      "to": "github-free-frequency-factory-issue-59",
+      "type": "EXPLICITLY_REFERENCES",
+      "status": "PROVEN"
+    },
+    {
+      "from": "github-free-frequency-factory-issue-59",
+      "to": "github-free-frequency-factory-issue-59-comment-5802556293",
+      "type": "HAS_COMMENT",
+      "status": "PROVEN"
+    },
+    {
+      "from": "chat-2026-09-05-home-manager",
+      "to": "file-cybertron-reconstruction-delta-04-2026-09-23",
+      "type": "SEMANTICALLY_MATCHES",
+      "status": "STRONG_CANDIDATE"
+    },
+    {
+      "from": "chat-2026-09-05-home-manager",
+      "to": "github-free-frequency-factory-issue-59",
+      "type": "UNKNOWN_PROVENANCE",
+      "status": "NOT_PROVEN"
+    }
+  ],
+  "rule": "Semantic similarity may propose a link; direct provenance requires explicit durable bridge evidence."
+}
