@@ -5,6 +5,11 @@ on:
     paths:
       - '.github/workflows/cybertron-airtable-ready-dispatcher-v02.yml'
       - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/cybertron-airtable-ready-dispatcher-v02.yml'
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
+      - '.github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs'
   schedule:
     - cron: '*/5 * * * *'
 permissions:
@@ -23,12 +28,13 @@ jobs:
       - name: Verify dispatcher contract tests
         run: node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Read-only terminal status probe
+        if: github.event_name != 'pull_request'
         id: probe
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs probe
       - name: Preflight cross-repo capability and exact target
-        if: steps.probe.outputs.decision != 'REPLAY'
+        if: github.event_name != 'pull_request' && steps.probe.outputs.decision != 'REPLAY'
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
