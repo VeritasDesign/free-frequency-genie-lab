@@ -1,0 +1,26 @@
+name: Cybertron AIR-ROCK-001 Scheduled Worker v0.1
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cybertron-air-rock-001-worker-v01.yml'
+      - '.github/scripts/cybertron-air-rock-001-worker-v01.cjs'
+      - '.github/scripts/test-cybertron-air-rock-001-worker-v01.cjs'
+  schedule:
+    - cron: '*/5 * * * *'
+concurrency:
+  group: cybertron-air-rock-001-single-worker
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  harmless-hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bounded worker contract
+        run: node .github/scripts/test-cybertron-air-rock-001-worker-v01.cjs
+      - name: Execute only on scheduled default-branch runs
+        if: github.event_name == 'schedule'
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node .github/scripts/cybertron-air-rock-001-worker-v01.cjs
