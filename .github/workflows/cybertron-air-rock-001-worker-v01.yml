@@ -7,6 +7,9 @@ on:
       - '.github/scripts/test-cybertron-air-rock-001-worker-v01.cjs'
   schedule:
     - cron: '*/5 * * * *'
+concurrency:
+  group: cybertron-air-rock-001-single-worker
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
