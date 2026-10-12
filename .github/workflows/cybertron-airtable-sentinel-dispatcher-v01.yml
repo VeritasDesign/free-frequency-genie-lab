@@ -42,7 +42,13 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
+      - name: Read-only terminal probe (never seeds or claims)
+        id: probe
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node .github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs probe
       - name: Verify exact authorization and recovered target
+        if: steps.probe.outputs.decision != 'REPLAY'
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
@@ -58,16 +64,17 @@ jobs:
           git -C target checkout --detach e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
           test "$(git -C target rev-parse origin/factory-builder-95-forecast-coordinate-fix)" = e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
       - name: Seed or consume exact authorized Airtable READY order
+        if: steps.probe.outputs.decision != 'REPLAY'
         id: claim
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-sentinel-dispatcher-v01.cjs
       - name: Reuse already-pushed verified candidate on the same attempt
         id: reuse
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY'
         run: node .github/scripts/air-sentinel-001-resume.cjs
       - name: Factory executes trusted bounded handler
-        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         run: |
           set -euo pipefail
           node .github/scripts/air-sentinel-001-builder.cjs target | tee evidence/builder.json
@@ -88,14 +95,14 @@ jobs:
           git clone --local target baseline
           git -C baseline checkout --detach e4e6bf8197f177861e1fb9e6378a2a8e7bb85c7b
       - name: Browser verification with fixture and live NWS evidence separated
-        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         run: |
           set -euo pipefail
           npm install --prefix /tmp/sentinel-browser --no-audit --no-fund playwright@1.61.1
           /tmp/sentinel-browser/node_modules/.bin/playwright install --with-deps chromium
           PLAYWRIGHT_MODULE=/tmp/sentinel-browser/node_modules/playwright node .github/scripts/air-sentinel-001-verify.mjs target baseline
       - name: Upload immutable build and verification evidence
-        if: steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.reuse.outputs.reuse != 'true'
         id: artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -106,7 +113,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
       - name: Factory pushes branch, creates real PR and persists Result + Receipt
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY'
         env:
           GH_TOKEN: ${{ github.token }}
           BUILDER_PR_TOKEN: ${{ github.token }}
