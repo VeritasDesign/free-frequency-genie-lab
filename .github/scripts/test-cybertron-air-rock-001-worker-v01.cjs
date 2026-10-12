@@ -15,3 +15,30 @@ assert.throws(()=>decision({...done,[C.fields.result]:'wrong'}),/FOREIGN_COMPLET
 assert.throws(()=>decision({...done,[C.fields.receipt]:'{}'}),/INVALID_RECEIPT/);
 assert.match(digest,/^[a-f0-9]{64}$/);
 console.log('AIR_ROCK_001_CONTRACT_PASS '+digest);
+
+(async()=>{
+ const m=require('./cybertron-air-rock-001-worker-v01.cjs');
+ const originalFetch=global.fetch,originalToken=process.env.AIRTABLE_TOKEN;
+ let state={...f},writes=[];
+ process.env.AIRTABLE_TOKEN='mock-token-not-a-secret';
+ global.fetch=async(url,opts)=>{
+  assert.match(String(url),/recqLDb65ZOQyKxnl/);
+  if(opts.method==='PATCH'){
+   const patch=JSON.parse(opts.body).fields;writes.push(patch);state={...state,...patch};
+  }
+  return {ok:true,text:async()=>JSON.stringify({fields:state})};
+ };
+ try{
+  await m.main();
+  assert.equal(writes.length,2);
+  assert.equal(state[C.fields.status],'COMPLETE');
+  assert.equal(state[C.fields.result],digest);
+  assert.equal(decision(state),'REPLAY');
+  await m.main();
+  assert.equal(writes.length,2,'replay must not write');
+  console.log('AIR_ROCK_001_MOCKED_LIFECYCLE_PASS');
+ }finally{
+  global.fetch=originalFetch;
+  if(originalToken===undefined)delete process.env.AIRTABLE_TOKEN;else process.env.AIRTABLE_TOKEN=originalToken;
+ }
+})().catch(e=>{console.error(e);process.exitCode=1});
