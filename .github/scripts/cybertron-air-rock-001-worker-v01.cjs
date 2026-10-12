@@ -4,6 +4,7 @@ const C=Object.freeze({
  base:'app01sBuNbRyjVt47',table:'tbl3ZPAJF3FvbR90p',record:'recqLDb65ZOQyKxnl',
  id:'AIR-ROCK-001',task:'harmless-hash',payload:'KAW',step:1,max:1,
  attempt:'AIR-ROCK-001-SCHEDULED-V01',owner:'Cybertron ROCK Scheduled Worker v0.1',
+ next:'Fresh scheduled worker must compute SHA-256 of literal payload KAW, write a durable receipt/result, mark COMPLETE, and terminate. No external or production actions.',
  fields:{id:'fldn5b6yeYYRMPSaM',status:'fldgOSvL9pxpNRL2I',task:'fldHLUnihNBexSkZn',
  payload:'fldlnFmNjotAB08qm',step:'fldZz2dIKt7hoxxdD',max:'fldNVK0fO1mlCvRVJ',
  attempt:'fldyMDCSTEW46XKZV',claimed:'fldjB7m1c9jaMhNKR',
@@ -18,10 +19,14 @@ function decision(f){
  if(s==='COMPLETE'){
    if(get('attempt')!==C.attempt||get('claimed')!==C.owner||get('result')!==digest)throw Error('FOREIGN_COMPLETE');
    const receipt=JSON.parse(get('receipt'));
-   if(receipt.work_order!==C.id||receipt.sha256!==digest||receipt.production_write!==false)throw Error('INVALID_RECEIPT');
+   if(receipt.work_order!==C.id||receipt.attempt!==C.attempt||receipt.worker!==C.owner||receipt.sha256!==digest||receipt.algorithm!=='SHA-256'||receipt.encoding!=='UTF-8'||receipt.bytes!==3||receipt.production_write!==false||receipt.deploy!==false)throw Error('INVALID_RECEIPT');
    return 'REPLAY';
  }
- if(s==='CLAIMED'&&get('attempt')===C.attempt&&get('claimed')===C.owner)return 'RESUME';
+ if(s==='CLAIMED'&&get('attempt')===C.attempt&&get('claimed')===C.owner){
+   if(get('result')||get('receipt')||get('next')!==C.next)throw Error('CLAIMED_STATE_TAMPERED');
+   return 'RESUME';
+ }
+ if(get('next')!==C.next)throw Error('NEXT_ACTION_MISMATCH');
  if(s!=='READY'||get('attempt')||get('claimed')||get('receipt')||get('result'))throw Error('NOT_CLAIMABLE');
  return 'CLAIM';
 }
