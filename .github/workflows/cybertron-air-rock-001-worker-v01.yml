@@ -6,6 +6,7 @@ on:
       - '.github/workflows/cybertron-air-rock-001-worker-v01.yml'
       - '.github/scripts/cybertron-air-rock-001-worker-v01.cjs'
       - '.github/scripts/test-cybertron-air-rock-001-worker-v01.cjs'
+      - '.github/scripts/test-factory-parts-reconnection-v01.cjs'
   schedule:
     - cron: '*/5 * * * *'
 concurrency:
@@ -20,6 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify bounded worker contract
         run: node .github/scripts/test-cybertron-air-rock-001-worker-v01.cjs
+      - name: Verify isolated Factory Parts reconnection fixture
+        run: node .github/scripts/test-factory-parts-reconnection-v01.cjs
       - name: Execute only on scheduled or explicitly dispatched default-branch runs
         if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
