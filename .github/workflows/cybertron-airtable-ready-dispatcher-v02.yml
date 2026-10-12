@@ -90,7 +90,7 @@ jobs:
           gh issue comment 116 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_REAL_002_DIAGNOSTIC_V0.1 run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} status=FAILED after_claim=true. Inspect run job logs for AIR_REAL_002_STAGE marker. Work order remains CLAIMED for idempotent RESUME; no manual reset."
 
       - name: Persist completion only after PR evidence
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.pr.outcome == 'success'
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
