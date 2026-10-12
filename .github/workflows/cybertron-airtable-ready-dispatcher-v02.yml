@@ -45,13 +45,13 @@ jobs:
           test "$BLOB" = "$TARGET_BLOB" || { echo "TARGET_SOURCE_DRIFT $BLOB — AIR-REAL-002 remains READY"; exit 78; }
           echo "AIR_REAL_002_PREFLIGHT PASS"
       - name: Claim exact READY work order
-        if: steps.probe.outputs.decision != 'REPLAY'
+        if: github.event_name != 'pull_request' && steps.probe.outputs.decision != 'REPLAY'
         id: claim
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Build bounded desktop-only fix and PR
-        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY'
+        if: github.event_name != 'pull_request' && steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY'
         id: pr
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
@@ -96,7 +96,7 @@ jobs:
           gh issue comment 116 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_REAL_002_DIAGNOSTIC_V0.1 run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} status=FAILED after_claim=true. Inspect run job logs for AIR_REAL_002_STAGE marker. Work order remains CLAIMED for idempotent RESUME; no manual reset."
 
       - name: Persist completion only after PR evidence
-        if: steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.pr.outcome == 'success'
+        if: github.event_name != 'pull_request' && steps.probe.outputs.decision != 'REPLAY' && steps.claim.outputs.decision != 'REPLAY' && steps.pr.outcome == 'success'
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
