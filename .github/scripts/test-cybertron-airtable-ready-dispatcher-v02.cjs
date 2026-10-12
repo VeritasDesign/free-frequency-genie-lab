@@ -7,7 +7,14 @@ assert.throws(()=>m.v({...good,[F.task]:'factory-build'}),/TASK_CLASS_MISMATCH/)
 assert.throws(()=>m.v({...good,[F.payload]:'different'}),/PAYLOAD_MISMATCH/);
 assert.throws(()=>m.v({...good,[F.status]:'RUNNING'}),/STATUS_NOT_READY/);
 assert.equal(m.v({...good,[F.status]:'CLAIMED',[F.attempt]:m.C.exec,[F.claimed]:'Cybertron READY Dispatcher v0.2'}),'RESUME');
-assert.equal(m.v({...good,[F.status]:'COMPLETE',[F.attempt]:m.C.exec}),'REPLAY');
+const terminal={...good,[F.status]:'COMPLETE',[F.attempt]:m.C.exec,[F.claimed]:'Cybertron READY Dispatcher v0.2',[F.next]:'Human PR review',[F.receipt]:'FACTORY RECEIPT: PR verified',[F.result]:'https://github.com/VeritasDesign/free-frequency-landing-lab/pull/2'};
+assert.equal(m.v(terminal),'REPLAY');
+assert.throws(()=>m.v({...terminal,[F.receipt]:''}),/TERMINAL_EVIDENCE_MISSING/);
+assert.throws(()=>m.v({...terminal,[F.attempt]:'OTHER'}),/TERMINAL_ATTEMPT_MISMATCH/);
+assert.throws(()=>m.v({...terminal,[F.claimed]:'OTHER'}),/TERMINAL_OWNER_MISMATCH/);
+assert.throws(()=>m.v({...terminal,[F.id]:'OTHER'}),/WORK_ORDER_MISMATCH/);
+assert.throws(()=>m.v({...terminal,[F.payload]:'OTHER'}),/PAYLOAD_MISMATCH/);
+assert.throws(()=>m.v({...good,[F.next]:'Human PR review'}),/NEXT_ACTION_MISMATCH/);
 assert.equal(m.C.target.repo,'VeritasDesign/free-frequency-landing-lab');
 assert.equal(m.C.target.blob,'97127001e1d37eedbd5258ccd28f299de1520a0c');
 console.log('CYBERTRON_READY_DISPATCHER_V02_TEST PASS — bounded AIR-REAL-002 contract');
