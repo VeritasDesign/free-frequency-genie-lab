@@ -12,6 +12,9 @@ on:
       - '.github/scripts/bounded-fenced-hash-worker-v01.cjs'
       - '.github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs'
       - '.github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs'
+      - '.github/scripts/bounded-work-order-lifecycle-v01.cjs'
+      - '.github/scripts/bounded-work-order-lifecycle-isolated-v01.sql'
+      - '.github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs'
 permissions:
   contents: read
 jobs:
@@ -53,3 +56,7 @@ jobs:
         run: node .github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs
       - name: Qualify fenced bounded SHA-256 executor in disposable PostgreSQL
         run: node .github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs
+      - name: Prepare isolated durable work-order lifecycle tables
+        run: psql -X -v ON_ERROR_STOP=1 -f .github/scripts/bounded-work-order-lifecycle-isolated-v01.sql
+      - name: Verify full work-order lifecycle, interruption, recovery and replay
+        run: node .github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs
