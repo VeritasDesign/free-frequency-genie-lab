@@ -6,6 +6,9 @@ on:
       - '.github/scripts/atomic-claim-isolated-v01.sql'
       - '.github/scripts/test-atomic-claim-postgres-isolated-v01.sh'
       - '.github/scripts/test-squirrel-cas-postgres-isolated-v01.sh'
+      - '.github/scripts/atomic-claim-admission-v01.cjs'
+      - '.github/scripts/test-atomic-claim-admission-v01.cjs'
+      - '.github/scripts/test-atomic-claim-admission-postgres-v01.cjs'
 permissions:
   contents: read
 jobs:
@@ -39,3 +42,7 @@ jobs:
         run: bash .github/scripts/test-atomic-claim-postgres-isolated-v01.sh
       - name: Qualify existing Squirrel JSONB CAS against real database contention
         run: bash .github/scripts/test-squirrel-cas-postgres-isolated-v01.sh
+      - name: Qualify bounded admission and lost-response recovery offline
+        run: node .github/scripts/test-atomic-claim-admission-v01.cjs
+      - name: Qualify bounded admission against disposable PostgreSQL
+        run: node .github/scripts/test-atomic-claim-admission-postgres-v01.cjs
