@@ -11,13 +11,22 @@ function v(f){const x=k=>f[C.fields[k]]??'';
  if(x('id')!==C.id)throw Error('WORK_ORDER_MISMATCH');
  if(x('task')!==C.task)throw Error('TASK_CLASS_MISMATCH');
  if(x('payload')!==C.payload)throw Error('PAYLOAD_MISMATCH');
+ const status=x('status'), owner='Cybertron READY Dispatcher v0.2';
+ if(status==='COMPLETE'){
+  if(x('attempt')!==C.exec||x('claimed')!==owner)throw Error('FOREIGN_COMPLETE');
+  // No qualified execution-receipt schema exists for AIR-REAL-002 yet.
+  // Never interpret a status/attempt match as proof of useful work.
+  throw Error('COMPLETION_RECEIPT_NOT_QUALIFIED');
+ }
  if(x('next')!==C.next)throw Error('NEXT_ACTION_MISMATCH');
- if(x('status')==='COMPLETE'&&x('attempt')===C.exec)return 'REPLAY';
- if(x('status')==='CLAIMED'&&x('attempt')===C.exec&&x('claimed')==='Cybertron READY Dispatcher v0.2')return 'RESUME';
- if(x('status')!=='READY')throw Error('STATUS_NOT_READY');
- if(x('attempt')||x('claimed')||x('result'))throw Error('ALREADY_CLAIMED_OR_COMPLETED');
+ if(status==='CLAIMED'){
+  if(x('attempt')===C.exec&&x('claimed')===owner&&!x('result')&&!x('receipt'))return 'RESUME';
+  throw Error('FOREIGN_OR_AMBIGUOUS_CLAIM');
+ }
+ if(status!=='READY')throw Error('STATUS_NOT_READY');
+ if(x('attempt')||x('claimed')||x('result')||x('receipt'))throw Error('ALREADY_CLAIMED_OR_COMPLETED');
  return 'APPLY';
 }
 async function req(token,method,body){const u=`https://api.airtable.com/v0/${C.base}/${C.table}/${C.record}?returnFieldsByFieldId=true`;const r=await fetch(u,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});const t=await r.text();if(!r.ok)throw Error('AIRTABLE_'+r.status+':'+t.slice(0,200));return JSON.parse(t)}
-async function main(){const token=process.env.AIRTABLE_TOKEN;if(!token)throw Error('AIRTABLE_TOKEN_REQUIRED');const before=await req(token,'GET');const d=v(before.fields||{});if(process.env.GITHUB_OUTPUT)require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'decision='+d+'\n');if(d==='REPLAY'){console.log('DISPATCH_REPLAY');return}if(d==='RESUME'){console.log('DISPATCH_RESUME '+C.id);return}await req(token,'PATCH',{fields:{[C.fields.status]:'CLAIMED',[C.fields.attempt]:C.exec,[C.fields.claimed]:'Cybertron READY Dispatcher v0.2'}});console.log('DISPATCH_CLAIMED '+C.id)}
+async function main(){const token=process.env.AIRTABLE_TOKEN;if(!token)throw Error('AIRTABLE_TOKEN_REQUIRED');const before=await req(token,'GET');const d=v(before.fields||{});if(process.env.GITHUB_OUTPUT)require('fs').appendFileSync(process.env.GITHUB_OUTPUT,'decision='+d+'\n');if(d==='REPLAY'){console.log('DISPATCH_REPLAY');return}if(d==='RESUME'){console.log('DISPATCH_RESUME '+C.id);return}await req(token,'PATCH',{fields:{[C.fields.status]:'CLAIMED',[C.fields.attempt]:C.exec,[C.fields.claimed]:'Cybertron READY Dispatcher v0.2'}});const after=await req(token,'GET');if(v(after.fields||{})!=='RESUME')throw Error('CLAIM_READBACK_FAILED');console.log('DISPATCH_CLAIMED '+C.id)}
 module.exports={C,v,req,main};if(require.main===module)main().catch(e=>{console.error(e.message);process.exit(1)});
