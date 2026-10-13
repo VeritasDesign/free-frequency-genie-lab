@@ -9,6 +9,9 @@ on:
       - '.github/scripts/atomic-claim-admission-v01.cjs'
       - '.github/scripts/test-atomic-claim-admission-v01.cjs'
       - '.github/scripts/test-atomic-claim-admission-postgres-v01.cjs'
+      - '.github/scripts/bounded-fenced-hash-worker-v01.cjs'
+      - '.github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs'
+      - '.github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs'
 permissions:
   contents: read
 jobs:
@@ -46,3 +49,7 @@ jobs:
         run: node .github/scripts/test-atomic-claim-admission-v01.cjs
       - name: Qualify bounded admission against disposable PostgreSQL
         run: node .github/scripts/test-atomic-claim-admission-postgres-v01.cjs
+      - name: Qualify fenced bounded SHA-256 executor offline
+        run: node .github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs
+      - name: Qualify fenced bounded SHA-256 executor in disposable PostgreSQL
+        run: node .github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs
