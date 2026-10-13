@@ -7,6 +7,9 @@ on:
       - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
   schedule:
     - cron: '*/5 * * * *'
+concurrency:
+  group: cybertron-air-real-002-exact-target
+  cancel-in-progress: false
 permissions:
   contents: read
   issues: write
@@ -20,9 +23,19 @@ jobs:
       TARGET_BRANCH: factory-air-real-002-frequency-hero
     steps:
       - uses: actions/checkout@v4
-      - name: Verify dispatcher contract tests
-        run: node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
+      - name: Verify dispatcher and historical terminal contracts (offline)
+        run: |
+          node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
+          node .github/scripts/test-cybertron-ready-dispatch-decision-v01.cjs
+          node .github/scripts/test-air-real-002-terminal-proof-v01.cjs
+      - name: Verify historical completion BEFORE obsolete source preflight (read only)
+        id: terminal
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
+        run: node .github/scripts/air-real-002-terminal-proof-v01.cjs
       - name: Preflight cross-repo capability and exact target
+        if: steps.terminal.outputs.terminal_verified != 'true'
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
         run: |
@@ -33,12 +46,13 @@ jobs:
           test "$BLOB" = "$TARGET_BLOB" || { echo "TARGET_SOURCE_DRIFT $BLOB — AIR-REAL-002 remains READY"; exit 78; }
           echo "AIR_REAL_002_PREFLIGHT PASS"
       - name: Claim exact READY work order
+        if: steps.terminal.outputs.terminal_verified != 'true'
         id: claim
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
         run: node .github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs
       - name: Build bounded desktop-only fix and PR
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.terminal.outputs.terminal_verified != 'true' && steps.claim.outputs.decision != 'REPLAY'
         id: pr
         env:
           GH_TOKEN: ${{ secrets.FACTORY_CROSS_REPO_TOKEN }}
@@ -76,14 +90,14 @@ jobs:
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "AIR_REAL_002_PR $PR_URL"
       - name: Persist diagnostic receipt on executor failure
-        if: failure() && steps.claim.outcome == 'success'
+        if: failure() && steps.claim.outcome == 'success' && steps.terminal.outputs.terminal_verified != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment 116 --repo VeritasDesign/free-frequency-genie-lab --body "AIR_REAL_002_DIAGNOSTIC_V0.1 run=${GITHUB_RUN_ID} attempt=${GITHUB_RUN_ATTEMPT} status=FAILED after_claim=true. Inspect run job logs for AIR_REAL_002_STAGE marker. Work order remains CLAIMED for idempotent RESUME; no manual reset."
 
       - name: Persist completion only after PR evidence
-        if: steps.claim.outputs.decision != 'REPLAY'
+        if: steps.terminal.outputs.terminal_verified != 'true' && steps.claim.outputs.decision != 'REPLAY'
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
