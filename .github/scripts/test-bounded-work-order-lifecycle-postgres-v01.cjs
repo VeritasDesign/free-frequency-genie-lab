@@ -206,7 +206,7 @@ async function check(label,fn){try{await fn();console.log('CYBERTRON_LIFECYCLE_'
    assert.equal(winner.fence,2);
   }}})),/OWNERSHIP_NOT_VERIFIED/);
   assert.equal(state(),'CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),0);
-  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B')),/CLAIMED_ORDER_NOT_EXACT/);
+  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B')),/ATTEMPT_BUDGET_EXHAUSTED/);
  });
  await check('FOREIGN_CLAIM_REJECTED',async()=>{
   reset();await claimStore().tryClaim({work_order_id:c.work_order_id,attempt_id:'FOREIGN',owner:'FOREIGN',ttl_seconds:300});
