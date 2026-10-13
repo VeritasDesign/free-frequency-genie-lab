@@ -9,6 +9,7 @@ CREATE TABLE cybertron_claim_gate_fixture (
   owner text NOT NULL,
   fence bigint NOT NULL CHECK (fence > 0),
   expires_at timestamptz NOT NULL,
+  completed_at timestamptz,
   claimed_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE TABLE cybertron_claim_effect_fixture (
@@ -22,4 +23,4 @@ CREATE TABLE cybertron_claim_effect_fixture (
 -- A zero-row result means NOT OWNER (or an unresolved response).
 -- Never infer ownership from Airtable's status or a prior read.
 -- Fence must accompany any database-side consequential write.
--- External side effects require independent idempotency/fencing.
+-- A fenced commit updates completed_at while holding the claim-row lock;\n-- future takeovers MUST require completed_at IS NULL.\n-- External side effects require independent idempotency/fencing.
