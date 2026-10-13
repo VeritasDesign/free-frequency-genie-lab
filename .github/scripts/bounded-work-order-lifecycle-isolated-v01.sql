@@ -9,6 +9,7 @@ CREATE TABLE cybertron_work_order_fixture (
  next_action text NOT NULL,
  status text NOT NULL CHECK (status IN ('READY','CLAIMED','COMPLETE')),
  step integer NOT NULL DEFAULT 0,
+ claim_generation integer NOT NULL DEFAULT 0,
  max_attempts integer NOT NULL DEFAULT 1 CHECK (max_attempts BETWEEN 1 AND 2),
  attempt_id text,
  claimed_by text,
@@ -16,13 +17,13 @@ CREATE TABLE cybertron_work_order_fixture (
  result text,
  receipt jsonb,
  CHECK (
-  (status='READY' AND step=0 AND attempt_id IS NULL AND claimed_by IS NULL
+  (status='READY' AND step=0 AND claim_generation=0 AND attempt_id IS NULL AND claimed_by IS NULL
    AND fence IS NULL AND result IS NULL AND receipt IS NULL)
   OR
-  (status='CLAIMED' AND step BETWEEN 1 AND max_attempts AND attempt_id IS NOT NULL AND claimed_by IS NOT NULL
+  (status='CLAIMED' AND step=1 AND claim_generation BETWEEN 1 AND max_attempts AND attempt_id IS NOT NULL AND claimed_by IS NOT NULL
    AND fence>0 AND result IS NULL AND receipt IS NULL)
   OR
-  (status='COMPLETE' AND step BETWEEN 1 AND max_attempts AND attempt_id IS NOT NULL AND claimed_by IS NOT NULL
+  (status='COMPLETE' AND step=1 AND claim_generation BETWEEN 1 AND max_attempts AND attempt_id IS NOT NULL AND claimed_by IS NOT NULL
    AND fence>0 AND result ~ '^[0-9a-f]{64}$' AND receipt IS NOT NULL)
  )
 );
@@ -49,6 +50,6 @@ CREATE TRIGGER cybertron_lifecycle_event_trigger_fixture
 -- and CLAIMED -> COMPLETE only with an exact durable receipt.
 -- No trigger, table, or fixture is installed in production.
 
--- A CLAIMED -> CLAIMED reassignment increments step and preserves old owner
+-- A CLAIMED -> CLAIMED reassignment increments claim_generation (NOT workflow Step) and preserves old owner
 -- in cybertron_work_order_events_fixture. Receipt commitment must remain
 -- fenced against the current claim row; no live schema migration is implied.
