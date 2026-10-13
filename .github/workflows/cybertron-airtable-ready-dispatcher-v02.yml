@@ -28,6 +28,7 @@ jobs:
           node .github/scripts/test-cybertron-airtable-ready-dispatcher-v02.cjs
           node .github/scripts/test-cybertron-ready-dispatch-decision-v01.cjs
           node .github/scripts/test-air-real-002-terminal-proof-v01.cjs
+          node .github/scripts/test-air-real-002-workflow-gates-v01.cjs
       - name: Verify historical completion BEFORE obsolete source preflight (read only)
         id: terminal
         env:
