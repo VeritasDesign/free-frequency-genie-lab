@@ -5,6 +5,7 @@ on:
       - '.github/workflows/cybertron-atomic-claim-isolated-v01.yml'
       - '.github/scripts/atomic-claim-isolated-v01.sql'
       - '.github/scripts/test-atomic-claim-postgres-isolated-v01.sh'
+      - '.github/scripts/test-squirrel-cas-postgres-isolated-v01.sh'
 permissions:
   contents: read
 jobs:
@@ -36,3 +37,5 @@ jobs:
         run: psql --version
       - name: Qualify real PostgreSQL atomic claims and fencing
         run: bash .github/scripts/test-atomic-claim-postgres-isolated-v01.sh
+      - name: Qualify existing Squirrel JSONB CAS against real database contention
+        run: bash .github/scripts/test-squirrel-cas-postgres-isolated-v01.sh
