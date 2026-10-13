@@ -15,7 +15,7 @@ function identity(row,c){
 }
 function claimed(row,c,attemptId,owner,fence){
  identity(row,c);
- if(row.status!=='CLAIMED'||!Number.isSafeInteger(row.step)||row.step<1||row.step>row.max_attempts||row.attempt_id!==attemptId||row.claimed_by!==owner||
+ if(row.status!=='CLAIMED'||row.step!==1||!Number.isSafeInteger(row.claim_generation)||row.claim_generation<1||row.claim_generation>row.max_attempts||row.attempt_id!==attemptId||row.claimed_by!==owner||
     !Number.isSafeInteger(row.fence)||row.fence<1||
     (fence!==undefined&&row.fence!==fence)||
     row.result!==null&&row.result!==''&&row.result!==undefined||
@@ -24,7 +24,7 @@ function claimed(row,c,attemptId,owner,fence){
 }
 function completed(row,c,receipt){
  identity(row,c);
- if(row.status!=='COMPLETE'||!Number.isSafeInteger(row.step)||row.step<1||row.step>row.max_attempts||
+ if(row.status!=='COMPLETE'||row.step!==1||!Number.isSafeInteger(row.claim_generation)||row.claim_generation<1||row.claim_generation>row.max_attempts||
     row.attempt_id!==receipt.attempt_id||row.claimed_by!==receipt.owner||row.fence!==receipt.fence||
     row.result!==receipt.digest||!exactReceipt(row.receipt,receipt))fail('TERMINAL_ORDER_NOT_QUALIFIED');
  const expected=receiptFor(c,receipt);
@@ -76,7 +76,7 @@ async function runLifecycle({contract,attemptId,owner,claimStore,orderStore,hook
   // can take over ONLY after lease expiry, if the bounded budget permits.
   if(row.attempt_id!==attemptId||row.claimed_by!==owner){
    if(row.attempt_id===attemptId)fail('ATTEMPT_ID_REUSED_BY_FOREIGN_OWNER');
-   if(row.step>=row.max_attempts)fail('ATTEMPT_BUDGET_EXHAUSTED');
+   if(row.claim_generation>=row.max_attempts)fail('ATTEMPT_BUDGET_EXHAUSTED');
    if(typeof orderStore.transferClaim!=='function')fail('TAKEOVER_CAS_ADAPTER_REQUIRED');
    claimed(row,contract,row.attempt_id,row.claimed_by,row.fence);
    if(await claimStore.readReceipt(contract.work_order_id))fail('DURABLE_RECEIPT_PREVENTS_TAKEOVER');
@@ -98,7 +98,7 @@ async function runLifecycle({contract,attemptId,owner,claimStore,orderStore,hook
    if(lease.fence<=row.fence)fail('TAKEOVER_FENCE_NOT_ADVANCED');
    const verified=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner);
    if(verified.fence!==lease.fence)fail('TAKEOVER_FENCE_CHANGED');
-   const old={attempt_id:row.attempt_id,owner:row.claimed_by,fence:row.fence,step:row.step};
+   const old={attempt_id:row.attempt_id,owner:row.claimed_by,fence:row.fence,claim_generation:row.claim_generation};
    const next={attempt_id:attemptId,owner,fence:lease.fence,work_order_id:contract.work_order_id};
    if(hooks.afterTakeoverLease)await hooks.afterTakeoverLease(); // isolated crash injection
    try{
@@ -108,13 +108,17 @@ async function runLifecycle({contract,attemptId,owner,claimStore,orderStore,hook
     let observed;
     try{observed=claimed(await read(),contract,attemptId,owner,lease.fence)}
     catch{fail('TAKEOVER_PUBLICATION_UNKNOWN')}
-    if(observed.step!==old.step+1)fail('TAKEOVER_PUBLICATION_UNKNOWN');
+    if(observed.claim_generation!==old.claim_generation+1)fail('TAKEOVER_PUBLICATION_UNKNOWN');
    }
    row=claimed(await read(),contract,attemptId,owner,lease.fence);
-   if(row.step!==old.step+1)fail('TAKEOVER_STEP_MISMATCH');
+   if(row.claim_generation!==old.claim_generation+1)fail('TAKEOVER_GENERATION_MISMATCH');
   }else row=claimed(row,contract,attemptId,owner);
  }else fail('ORDER_STATUS_NOT_EXECUTABLE');
  if(hooks.afterClaimed)await hooks.afterClaimed(); // isolated crash injection only
+ // Workflow Step is NOT an attempt counter. Require exact current work order
+ // before hashing; database commit remains independently fenced.
+ const fresh=claimed(await read(),contract,attemptId,owner,row.fence);
+ if(fresh.claim_generation!==row.claim_generation)fail('CLAIM_GENERATION_CHANGED');
  let receipt=await claimStore.readReceipt(contract.work_order_id);
  if(receipt){
   if(!exactReceipt(receipt,receiptFor(contract,receipt))||
