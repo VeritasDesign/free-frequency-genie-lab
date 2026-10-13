@@ -1,0 +1,38 @@
+name: Cybertron Atomic Claim Disposable PostgreSQL Qualification v0.1
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cybertron-atomic-claim-isolated-v01.yml'
+      - '.github/scripts/atomic-claim-isolated-v01.sql'
+      - '.github/scripts/test-atomic-claim-postgres-isolated-v01.sh'
+permissions:
+  contents: read
+jobs:
+  disposable-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated-only-not-a-secret
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: isolated-only-not-a-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm isolated database client
+        run: psql --version
+      - name: Qualify real PostgreSQL atomic claims and fencing
+        run: bash .github/scripts/test-atomic-claim-postgres-isolated-v01.sh
