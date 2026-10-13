@@ -46,7 +46,7 @@ const orderStore=()=>({
   const s=q(`SELECT json_build_object(
    'recordId',record_id,'work_order_id',work_order_id,'task_class',task_class,
    'payload',payload,'next_action',next_action,'status',status,'step',step,
-   'max_attempts',max_attempts,'attempt_id',attempt_id,'claimed_by',claimed_by,
+   'max_attempts',max_attempts,'claim_generation',claim_generation,'attempt_id',attempt_id,'claimed_by',claimed_by,
    'fence',fence,'result',result,'receipt',receipt)::text
    FROM cybertron_work_order_fixture WHERE record_id=${lit(id)}`);
   return s?JSON.parse(s):null;
@@ -60,7 +60,7 @@ const orderStore=()=>({
     AND completed_at IS NULL FOR UPDATE
   )
   UPDATE cybertron_work_order_fixture AS w
-  SET status='CLAIMED',step=1,attempt_id=${lit(claim.attempt_id)},
+  SET status='CLAIMED',step=1,claim_generation=1,attempt_id=${lit(claim.attempt_id)},
       claimed_by=${lit(claim.owner)},fence=${Number(claim.fence)}
   WHERE w.record_id=${lit(contract.recordId)}
     AND w.work_order_id=${lit(contract.work_order_id)}
@@ -83,13 +83,13 @@ const orderStore=()=>({
   )
   UPDATE cybertron_work_order_fixture AS w
   SET attempt_id=${lit(next.attempt_id)},claimed_by=${lit(next.owner)},
-      fence=${Number(next.fence)},step=w.step+1
+      fence=${Number(next.fence)},claim_generation=w.claim_generation+1
   WHERE w.record_id=${lit(contract.recordId)}
     AND w.work_order_id=${lit(contract.work_order_id)}
     AND w.task_class=${lit(contract.task_class)} AND w.payload=${lit(contract.payload)}
     AND w.next_action=${lit(contract.next_action)}
-    AND w.status='CLAIMED' AND w.step=${Number(old.step)}
-    AND w.max_attempts>=w.step+1
+    AND w.status='CLAIMED' AND w.step=1 AND w.claim_generation=${Number(old.claim_generation)}
+    AND w.max_attempts>=w.claim_generation+1
     AND w.attempt_id=${lit(old.attempt_id)} AND w.claimed_by=${lit(old.owner)}
     AND w.fence=${Number(old.fence)} AND w.result IS NULL AND w.receipt IS NULL
     AND NOT EXISTS(SELECT 1 FROM cybertron_claim_receipt_fixture r
@@ -117,7 +117,7 @@ const orderStore=()=>({
   WHERE w.record_id=${lit(contract.recordId)} AND w.work_order_id=${lit(contract.work_order_id)}
    AND w.task_class=${lit(contract.task_class)} AND w.payload=${lit(contract.payload)}
    AND w.next_action=${lit(contract.next_action)}
-   AND w.status='CLAIMED' AND w.step BETWEEN 1 AND w.max_attempts AND w.attempt_id=${lit(r.attempt_id)}
+   AND w.status='CLAIMED' AND w.step=1 AND w.claim_generation BETWEEN 1 AND w.max_attempts AND w.attempt_id=${lit(r.attempt_id)}
    AND w.claimed_by=${lit(r.owner)} AND w.fence=${Number(r.fence)}
    AND w.result IS NULL AND w.receipt IS NULL AND EXISTS(SELECT 1 FROM receipt_gate)
   RETURNING record_id;`);
@@ -236,7 +236,8 @@ async function check(label,fn){try{await fn();console.log('CYBERTRON_LIFECYCLE_'
   const next=await runLifecycle(args('ATTEMPT-B','RUNNER-B'));
   assert.equal(next.status,'COMPLETE_VERIFIED');assert.equal(next.fence,2);
   assert.equal(statuses(),'READY>CLAIMED>CLAIMED>COMPLETE');
-  assert.equal(q(`SELECT step FROM cybertron_work_order_fixture WHERE work_order_id=${lit(c.work_order_id)}`),'2');
+  assert.equal(q(`SELECT step FROM cybertron_work_order_fixture WHERE work_order_id=${lit(c.work_order_id)}`),'1');
+  assert.equal(q(`SELECT claim_generation FROM cybertron_work_order_fixture WHERE work_order_id=${lit(c.work_order_id)}`),'2');
   assert.equal(count('cybertron_claim_receipt_fixture'),1);
   const replay=await runLifecycle(args('ATTEMPT-A','RUNNER-A',{hooks:{afterClaimed:()=>{throw Error('REPLAY_TRIGGERED_HOOK')}}}));assert.equal(replay.status,'REPLAY_VERIFIED');
  });
