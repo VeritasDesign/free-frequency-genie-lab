@@ -11,11 +11,11 @@ function identity(row,c){
  for(const k of ['recordId','work_order_id','task_class','payload','next_action'])
   if(!nonempty(c[k])||row[k]!==c[k])fail('ORDER_IDENTITY_'+k.toUpperCase());
  if(row.task_class!=='harmless-hash'||c.task_class!=='harmless-hash')fail('TASK_CLASS_NOT_AUTHORIZED');
- if(row.max_attempts!==1)fail('ATTEMPT_BUDGET_INVALID');
+ if(!Number.isSafeInteger(row.max_attempts)||row.max_attempts<1||row.max_attempts>2)fail('ATTEMPT_BUDGET_INVALID');
 }
 function claimed(row,c,attemptId,owner,fence){
  identity(row,c);
- if(row.status!=='CLAIMED'||row.step!==1||row.attempt_id!==attemptId||row.claimed_by!==owner||
+ if(row.status!=='CLAIMED'||!Number.isSafeInteger(row.step)||row.step<1||row.step>row.max_attempts||row.attempt_id!==attemptId||row.claimed_by!==owner||
     !Number.isSafeInteger(row.fence)||row.fence<1||
     (fence!==undefined&&row.fence!==fence)||
     row.result!==null&&row.result!==''&&row.result!==undefined||
@@ -24,7 +24,7 @@ function claimed(row,c,attemptId,owner,fence){
 }
 function completed(row,c,receipt){
  identity(row,c);
- if(row.status!=='COMPLETE'||row.step!==1||
+ if(row.status!=='COMPLETE'||!Number.isSafeInteger(row.step)||row.step<1||row.step>row.max_attempts||
     row.attempt_id!==receipt.attempt_id||row.claimed_by!==receipt.owner||row.fence!==receipt.fence||
     row.result!==receipt.digest||!exactReceipt(row.receipt,receipt))fail('TERMINAL_ORDER_NOT_QUALIFIED');
  const expected=receiptFor(c,receipt);
@@ -72,7 +72,42 @@ async function runLifecycle({contract,attemptId,owner,claimStore,orderStore,hook
   }
   row=claimed(await read(),contract,attemptId,owner,claim.fence);
  }else if(row.status==='CLAIMED'){
-  row=claimed(row,contract,attemptId,owner);
+  // Same-owner retries do not consume another attempt. A different attempt
+  // can take over ONLY after lease expiry, if the bounded budget permits.
+  if(row.attempt_id!==attemptId||row.claimed_by!==owner){
+   if(row.attempt_id===attemptId)fail('ATTEMPT_ID_REUSED_BY_FOREIGN_OWNER');
+   if(row.step>=row.max_attempts)fail('ATTEMPT_BUDGET_EXHAUSTED');
+   if(typeof orderStore.transferClaim!=='function')fail('TAKEOVER_CAS_ADAPTER_REQUIRED');
+   claimed(row,contract,row.attempt_id,row.claimed_by,row.fence);
+   if(await claimStore.readReceipt(contract.work_order_id))fail('DURABLE_RECEIPT_PREVENTS_TAKEOVER');
+   let lease;
+   try{lease=await claimStore.tryClaim({
+    work_order_id:contract.work_order_id,attempt_id:attemptId,owner,ttl_seconds:300
+   })}
+   catch{
+    try{lease=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner)}
+    catch{fail('TAKEOVER_CLAIM_RESULT_UNKNOWN')}
+   }
+   if(!lease)fail('TAKEOVER_CLAIM_NOT_ACQUIRED');
+   checkLease(lease,contract,attemptId,owner);
+   if(lease.fence<=row.fence)fail('TAKEOVER_FENCE_NOT_ADVANCED');
+   const verified=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner);
+   if(verified.fence!==lease.fence)fail('TAKEOVER_FENCE_CHANGED');
+   const old={attempt_id:row.attempt_id,owner:row.claimed_by,fence:row.fence,step:row.step};
+   const next={attempt_id:attemptId,owner,fence:lease.fence,work_order_id:contract.work_order_id};
+   if(hooks.afterTakeoverLease)await hooks.afterTakeoverLease(); // isolated crash injection
+   try{
+    if(await orderStore.transferClaim(contract,old,next)!==true)fail('TAKEOVER_CAS_REJECTED');
+   }catch{
+    // A lost write ACK can be reconciled only by exact new-owner state.
+    let observed;
+    try{observed=claimed(await read(),contract,attemptId,owner,lease.fence)}
+    catch{fail('TAKEOVER_PUBLICATION_UNKNOWN')}
+    if(observed.step!==old.step+1)fail('TAKEOVER_PUBLICATION_UNKNOWN');
+   }
+   row=claimed(await read(),contract,attemptId,owner,lease.fence);
+   if(row.step!==old.step+1)fail('TAKEOVER_STEP_MISMATCH');
+  }else row=claimed(row,contract,attemptId,owner);
  }else fail('ORDER_STATUS_NOT_EXECUTABLE');
  if(hooks.afterClaimed)await hooks.afterClaimed(); // isolated crash injection only
  let receipt=await claimStore.readReceipt(contract.work_order_id);
