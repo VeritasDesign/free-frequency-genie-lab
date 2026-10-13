@@ -1,0 +1,210 @@
+{
+  "schema": "free-frequency-habitat-canon/v1",
+  "checkpoint_date": "2026-10-08",
+  "status": "RECOVERED_SOURCE_TRUTH",
+  "operating_law": [
+    "UNKNOWN > INVENTED",
+    "RECOVER BEFORE REBUILD",
+    "CURRENT > historical-valid"
+  ],
+  "mission": "Maintain a capability ecology in which work is reviewed, reusable Parts and process improvements are harvested, Parts are reused across products, and proven Parts can be composed into machines.",
+  "original_target_machines": [
+    "Justine",
+    "Wearable Lab",
+    "Echo",
+    "Cedric",
+    "AI Business Sign"
+  ],
+  "work_lifecycle": [
+    "INPUT",
+    "OWNER",
+    "WORK",
+    "OUTPUT",
+    "REVIEW",
+    "HARVEST",
+    "MEMORY"
+  ],
+  "completion_rule": "A job cannot become DONE until the system checks for a reusable Part and a process improvement; record only material harvest.",
+  "critters": {
+    "echo": {
+      "name": "Echo",
+      "role": "Chief of Staff / Router",
+      "inputs": "Goals, evidence, exceptions, approvals",
+      "outputs": "Priorities, routed work, decisions",
+      "permissions": "Route and approve within human-set authority",
+      "limits": "Cannot invent the mission or silently override Shannon",
+      "stop": "Escalate material conflicts or irreversible choices",
+      "waste": "Squirrel remembers decisions"
+    },
+    "owl": {
+      "name": "Owl",
+      "role": "Research Scout",
+      "inputs": "Endgame goals, unknowns, research requests",
+      "outputs": "Evidence packets, options, sources, unanswered questions",
+      "permissions": "Research and compare",
+      "limits": "No builds, no spending, no priority changes",
+      "stop": "Stop when evidence is sufficient for a decision",
+      "waste": "Beetle/Squirrel preserve useful research"
+    },
+    "beaver": {
+      "name": "Beaver",
+      "role": "Builder",
+      "inputs": "Echo-approved work orders",
+      "outputs": "Code, prototypes, tests, docs, reusable modules",
+      "permissions": "Modify designated working builds",
+      "limits": "No self-assigned mission or production deploy without approval",
+      "stop": "Return BLOCKED rather than expanding scope",
+      "waste": "Beetle decomposes; Parts Bin harvests"
+    },
+    "beetle": {
+      "name": "Beetle",
+      "role": "Decomposer / Maintainer",
+      "inputs": "Failures, stale code, duplicates, abandoned work",
+      "outputs": "Cleanup proposals, salvage, technical-debt reports",
+      "permissions": "Inspect all; non-destructive maintenance",
+      "limits": "No silent destructive deletion",
+      "stop": "Request approval before irreversible cleanup",
+      "waste": "Goat later handles true retirement"
+    },
+    "hawk": {
+      "name": "Hawk",
+      "role": "Systems Monitor",
+      "inputs": "Telemetry, queues, failures, costs, retries",
+      "outputs": "Health reports, bottlenecks, anomaly alerts",
+      "permissions": "Observe and flag",
+      "limits": "Does not fix or redirect work itself",
+      "stop": "Escalate severe health/security conditions",
+      "waste": "Jane interprets behavior; Echo routes fixes"
+    },
+    "jane": {
+      "name": "Jane",
+      "role": "Field Ecologist",
+      "inputs": "Behavioral record of critter interactions",
+      "outputs": "Handoff observations, niche conflicts, emergent-pattern reports",
+      "permissions": "Observe and recommend",
+      "limits": "Does not command critters",
+      "stop": "Escalate only through Echo/Shannon",
+      "waste": "Squirrel stores institutional learning"
+    },
+    "squirrel": {
+      "name": "Squirrel",
+      "role": "Interrupt / Continuity / Archive",
+      "inputs": "Prominent interruptions, snapshots, decisions",
+      "outputs": "Pause snapshot, redirect/resume state, archive memory",
+      "permissions": "Pause claiming of new work and preserve state",
+      "limits": "Does not decide strategic priority alone",
+      "stop": "Wait for Echo/Shannon resume or redirect",
+      "waste": "Pantry retains history"
+    },
+    "dog": {
+      "name": "Dog",
+      "role": "Guardian",
+      "inputs": "Permissions, secret/security events, suspicious behavior",
+      "outputs": "Blocks, alerts, boundary reports",
+      "permissions": "Stop unsafe operations",
+      "limits": "Cannot initiate projects",
+      "stop": "Escalate uncertain or high-impact security decisions",
+      "waste": "Hawk/Jane record incidents"
+    },
+    "bees": {
+      "name": "Bees",
+      "role": "Connectors",
+      "inputs": "Useful outputs and reusable artifacts",
+      "outputs": "Cross-project links and reuse suggestions",
+      "permissions": "Index and connect",
+      "limits": "No mutation of source artifacts",
+      "stop": "Do not create duplicate copies without a need",
+      "waste": "Squirrel/Parts Bin preserve canonical asset"
+    }
+  },
+  "taxonomy": {
+    "divisions": {
+      "Buck": "Revenue and sales work",
+      "Deer": "Speculative/experimental research and building",
+      "Raccoon": "Product/project division used by HQ routing"
+    },
+    "stages_or_actors": {
+      "Harvest": "Completion stage/actor that writes reusable Parts and process improvements after proof"
+    },
+    "planned_or_referenced_not_recovered_as_worker": {
+      "Goat": "Referenced as future true-retirement handler",
+      "Pantry": "Referenced as history-retention destination"
+    },
+    "not_historical_habitat_authority": {
+      "Matrix": "Modern capability/tool discovery adjunct; not part of recovered historical Habitat contract"
+    }
+  },
+  "first_runtime_chain": [
+    "Owl",
+    "Echo",
+    "Beaver",
+    "Beetle",
+    "Hawk",
+    "Jane",
+    "Harvest"
+  ],
+  "self_correction": {
+    "gate": "Harvest requires Hawk GREEN",
+    "remediation": "Hawk REVIEW routes back to Beaver",
+    "max_failed_remediation_attempts_before_human_block": 2
+  },
+  "part_acceptance_rule": [
+    "Problem it solves",
+    "Where it was proven",
+    "Inputs and output",
+    "Limits or unsafe uses",
+    "Validation required when reused"
+  ],
+  "historical_artifacts": [
+    {
+      "name": "FREE_FREQUENCY_OS_v0.5.7_MOBILE_SQUIRREL.zip",
+      "sha256": "808d3bf7c273f32192aec22851ef99f38873f35b33f5f2a6e8c8bfa871bb1dc8"
+    },
+    {
+      "name": "FREE_FREQUENCY_OS_v0.5.8_SQUIRREL_INTERRUPT.zip",
+      "sha256": "6b2a8391997fc761ad76f69a4ab417ba97a23ea417c9e6a3b62d2fbeff379b1a"
+    },
+    {
+      "name": "FREE_FREQUENCY_OS_v0.6.0_CRITTER_JOBS.zip",
+      "sha256": "e4e0e0abe68b1a0dc2911eb07e5f4dae9e804f015e84113d945ad5274545db35"
+    },
+    {
+      "name": "FREE_FREQUENCY_OS_v0.6.1_CRITTER_RUNTIME.zip",
+      "sha256": "876300065ca63bf56349c8b2f8ef47d795fd4faa4f8a5e66c6d81fbfab342f75"
+    },
+    {
+      "name": "FREE_FREQUENCY_OS_v0.6.2_BUG_EATER.zip",
+      "sha256": "2fc203e3d50899f287c8816755d7dc9a28f9fdbed0e1bd94ac88f7319974cf0b"
+    },
+    {
+      "name": "FREE_FREQUENCY_OS_v0.6.3_SELF_CORRECTING_HABITAT.zip",
+      "sha256": "7814cb3e07928c549b49636c9004e73149e35f0b9c3744e590459b8e646c6c3c"
+    },
+    {
+      "name": "FREE_FREQUENCY_HQ_v0.7.0_V1_FINAL_POLISH.zip",
+      "sha256": "42f299c9e57ac41963e85142c11aae9118f6eacff26704d9f41452ddb513af44"
+    },
+    {
+      "name": "FREE_FREQUENCY_FACTORY_BUILDER_FOUNDATION_v0.1.zip",
+      "sha256": "7b8973841cbddf8eac4c4ffa07de1bc5d495a4004a81176d1b179f203c5144b6"
+    }
+  ],
+  "current_source": {
+    "repo": "VeritasDesign/free-frequency-factory",
+    "branch": "main",
+    "files": {
+      "apps/private-hq/client.js": "6c6dff110c74db3327effcc9e59543f6411cda2f",
+      "apps/private-hq/index.html": "d8d7a1b509132128b7ceff5b0dc06b277b91d394",
+      "apps/private-hq/api/critter-run.js": "4bd897cbcf716400056bcc14ab11d76303d8f38a",
+      "apps/private-hq/api/hq-state.js": "64622ed217a07dbb93c0fcfa0a901ec02c2f916e",
+      "apps/private-hq/api/squirrel-test.js": "9fb1ffdfe8ab036da036b4afbdaf3bbb786c2b38",
+      "apps/private-hq/api/release-gate.js": "f13f7783f729786694312bd4d1e0de16a1e8be17",
+      "apps/private-hq/api/echo-agent.js": "d3041429a92ed50a46d1b6cacec376702b01b9c8",
+      "docs/ECOSYSTEM.md": "8704d0e49a2720e968aa37ce53259557020ad395",
+      "docs/PARTS.md": "186b0a54898fccf91a2e95de91718a3e00288d9b"
+    }
+  },
+  "current_known_inconsistency": "private-hq client/hq-state are v0.8.0 while several runtime APIs still write/expect v0.7.0; do not reactivate old HQ runtime without isolated reconciliation.",
+  "implementation_principle": "Critter roles are bounded jobs/functions. Do not require one autonomous AI per critter. Use existing modern systems where they already satisfy the role.",
+  "anti_loss": "Products may die; Parts and provenance must survive. Search Parts/current products/legacy before rebuilding."
+}
