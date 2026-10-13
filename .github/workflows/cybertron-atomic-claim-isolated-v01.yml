@@ -15,6 +15,8 @@ on:
       - '.github/scripts/bounded-work-order-lifecycle-v01.cjs'
       - '.github/scripts/bounded-work-order-lifecycle-isolated-v01.sql'
       - '.github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs'
+      - '.github/scripts/airtable-work-order-readonly-bridge-v01.cjs'
+      - '.github/scripts/test-airtable-work-order-readonly-bridge-v01.cjs'
 permissions:
   contents: read
 jobs:
@@ -60,3 +62,5 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f .github/scripts/bounded-work-order-lifecycle-isolated-v01.sql
       - name: Verify full work-order lifecycle, interruption, recovery and replay
         run: node .github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs
+      - name: Qualify live-schema Airtable read-only adapter without network or writes
+        run: node .github/scripts/test-airtable-work-order-readonly-bridge-v01.cjs
