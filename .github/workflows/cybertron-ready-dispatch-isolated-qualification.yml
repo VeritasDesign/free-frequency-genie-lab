@@ -1,0 +1,24 @@
+name: Cybertron READY Dispatch Isolated Qualification
+on:
+  push:
+    branches:
+      - review-factory-parts-reconnection-20261012
+    paths:
+      - '.github/scripts/cybertron-airtable-ready-dispatcher-v02.cjs'
+      - '.github/scripts/test-cybertron-ready-dispatch-decision-v01.cjs'
+      - '.github/workflows/cybertron-ready-dispatch-isolated-qualification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-decision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Qualify fail-closed dispatcher decisions without Airtable credentials
+        env:
+          AIRTABLE_TOKEN: ''
+        run: node .github/scripts/test-cybertron-ready-dispatch-decision-v01.cjs

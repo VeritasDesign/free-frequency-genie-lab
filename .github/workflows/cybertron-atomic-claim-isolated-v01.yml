@@ -1,0 +1,66 @@
+name: Cybertron Atomic Claim Disposable PostgreSQL Qualification v0.1
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cybertron-atomic-claim-isolated-v01.yml'
+      - '.github/scripts/atomic-claim-isolated-v01.sql'
+      - '.github/scripts/test-atomic-claim-postgres-isolated-v01.sh'
+      - '.github/scripts/test-squirrel-cas-postgres-isolated-v01.sh'
+      - '.github/scripts/atomic-claim-admission-v01.cjs'
+      - '.github/scripts/test-atomic-claim-admission-v01.cjs'
+      - '.github/scripts/test-atomic-claim-admission-postgres-v01.cjs'
+      - '.github/scripts/bounded-fenced-hash-worker-v01.cjs'
+      - '.github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs'
+      - '.github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs'
+      - '.github/scripts/bounded-work-order-lifecycle-v01.cjs'
+      - '.github/scripts/bounded-work-order-lifecycle-isolated-v01.sql'
+      - '.github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs'
+      - '.github/scripts/airtable-work-order-readonly-bridge-v01.cjs'
+      - '.github/scripts/test-airtable-work-order-readonly-bridge-v01.cjs'
+permissions:
+  contents: read
+jobs:
+  disposable-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated-only-not-a-secret
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: isolated-only-not-a-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm isolated database client
+        run: psql --version
+      - name: Qualify real PostgreSQL atomic claims and fencing
+        run: bash .github/scripts/test-atomic-claim-postgres-isolated-v01.sh
+      - name: Qualify existing Squirrel JSONB CAS against real database contention
+        run: bash .github/scripts/test-squirrel-cas-postgres-isolated-v01.sh
+      - name: Qualify bounded admission and lost-response recovery offline
+        run: node .github/scripts/test-atomic-claim-admission-v01.cjs
+      - name: Qualify bounded admission against disposable PostgreSQL
+        run: node .github/scripts/test-atomic-claim-admission-postgres-v01.cjs
+      - name: Qualify fenced bounded SHA-256 executor offline
+        run: node .github/scripts/test-bounded-fenced-hash-worker-offline-v01.cjs
+      - name: Qualify fenced bounded SHA-256 executor in disposable PostgreSQL
+        run: node .github/scripts/test-bounded-fenced-hash-worker-postgres-v01.cjs
+      - name: Prepare isolated durable work-order lifecycle tables
+        run: psql -X -v ON_ERROR_STOP=1 -f .github/scripts/bounded-work-order-lifecycle-isolated-v01.sql
+      - name: Verify full work-order lifecycle, interruption, recovery and replay
+        run: node .github/scripts/test-bounded-work-order-lifecycle-postgres-v01.cjs
+      - name: Qualify live-schema Airtable read-only adapter without network or writes
+        run: node .github/scripts/test-airtable-work-order-readonly-bridge-v01.cjs
