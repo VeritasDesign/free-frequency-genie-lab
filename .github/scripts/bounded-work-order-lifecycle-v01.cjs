@@ -88,7 +88,12 @@ async function runLifecycle({contract,attemptId,owner,claimStore,orderStore,hook
     try{lease=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner)}
     catch{fail('TAKEOVER_CLAIM_RESULT_UNKNOWN')}
    }
-   if(!lease)fail('TAKEOVER_CLAIM_NOT_ACQUIRED');
+   if(!lease){
+    // The same new owner may be resuming after an interruption between
+    // acquiring the lease and publishing the replacement claim.
+    try{lease=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner)}
+    catch{fail('TAKEOVER_CLAIM_NOT_ACQUIRED')}
+   }
    checkLease(lease,contract,attemptId,owner);
    if(lease.fence<=row.fence)fail('TAKEOVER_FENCE_NOT_ADVANCED');
    const verified=checkLease(await claimStore.readClaim(contract.work_order_id),contract,attemptId,owner);
