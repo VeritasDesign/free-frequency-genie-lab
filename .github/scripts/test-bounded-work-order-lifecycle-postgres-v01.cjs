@@ -66,7 +66,34 @@ const orderStore=()=>({
     AND w.work_order_id=${lit(contract.work_order_id)}
     AND w.task_class=${lit(contract.task_class)} AND w.payload=${lit(contract.payload)}
     AND w.next_action=${lit(contract.next_action)}
-    AND w.status='READY' AND w.step=0 AND w.max_attempts=1
+    AND w.status='READY' AND w.step=0 AND w.max_attempts BETWEEN 1 AND 2
+    AND EXISTS(SELECT 1 FROM owner_gate)
+  RETURNING record_id;`);
+  return s===contract.recordId;
+ },
+ async transferClaim(contract,old,next){
+  // The claim-row lock and exact CAS serialize with any concurrent receipt
+  // commit. An expired old worker cannot commit after this new fence wins.
+  const s=q(`WITH owner_gate AS (
+   SELECT work_order_id FROM cybertron_claim_gate_fixture
+   WHERE work_order_id=${lit(next.work_order_id)}
+    AND attempt_id=${lit(next.attempt_id)} AND owner=${lit(next.owner)}
+    AND fence=${Number(next.fence)} AND expires_at>clock_timestamp()
+    AND completed_at IS NULL FOR UPDATE
+  )
+  UPDATE cybertron_work_order_fixture AS w
+  SET attempt_id=${lit(next.attempt_id)},claimed_by=${lit(next.owner)},
+      fence=${Number(next.fence)},step=w.step+1
+  WHERE w.record_id=${lit(contract.recordId)}
+    AND w.work_order_id=${lit(contract.work_order_id)}
+    AND w.task_class=${lit(contract.task_class)} AND w.payload=${lit(contract.payload)}
+    AND w.next_action=${lit(contract.next_action)}
+    AND w.status='CLAIMED' AND w.step=${Number(old.step)}
+    AND w.max_attempts>=w.step+1
+    AND w.attempt_id=${lit(old.attempt_id)} AND w.claimed_by=${lit(old.owner)}
+    AND w.fence=${Number(old.fence)} AND w.result IS NULL AND w.receipt IS NULL
+    AND NOT EXISTS(SELECT 1 FROM cybertron_claim_receipt_fixture r
+      WHERE r.work_order_id=w.work_order_id)
     AND EXISTS(SELECT 1 FROM owner_gate)
   RETURNING record_id;`);
   return s===contract.recordId;
@@ -90,7 +117,7 @@ const orderStore=()=>({
   WHERE w.record_id=${lit(contract.recordId)} AND w.work_order_id=${lit(contract.work_order_id)}
    AND w.task_class=${lit(contract.task_class)} AND w.payload=${lit(contract.payload)}
    AND w.next_action=${lit(contract.next_action)}
-   AND w.status='CLAIMED' AND w.step=1 AND w.attempt_id=${lit(r.attempt_id)}
+   AND w.status='CLAIMED' AND w.step BETWEEN 1 AND w.max_attempts AND w.attempt_id=${lit(r.attempt_id)}
    AND w.claimed_by=${lit(r.owner)} AND w.fence=${Number(r.fence)}
    AND w.result IS NULL AND w.receipt IS NULL AND EXISTS(SELECT 1 FROM receipt_gate)
   RETURNING record_id;`);
@@ -98,13 +125,13 @@ const orderStore=()=>({
  }
 });
 function args(attemptId='ATTEMPT-A',owner='RUNNER-A',override={}){return {contract:c,attemptId,owner,claimStore:claimStore(),orderStore:orderStore(),...override}}
-function reset(){
+function reset(maxAttempts=1){
  q(`DELETE FROM cybertron_work_order_events_fixture WHERE work_order_id=${lit(c.work_order_id)}`);
  q(`DELETE FROM cybertron_work_order_fixture WHERE work_order_id=${lit(c.work_order_id)}`);
  q(`DELETE FROM cybertron_claim_receipt_fixture WHERE work_order_id=${lit(c.work_order_id)}`);
  q(`DELETE FROM cybertron_claim_gate_fixture WHERE work_order_id=${lit(c.work_order_id)}`);
  q(`INSERT INTO cybertron_work_order_fixture(record_id,work_order_id,task_class,payload,next_action,status,step,max_attempts)
- VALUES(${lit(c.recordId)},${lit(c.work_order_id)},${lit(c.task_class)},${lit(c.payload)},${lit(c.next_action)},'READY',0,1)`);
+ VALUES(${lit(c.recordId)},${lit(c.work_order_id)},${lit(c.task_class)},${lit(c.payload)},${lit(c.next_action)},'READY',0,${Number(maxAttempts)})`);
 }
 function statuses(){return q(`SELECT string_agg(status,'>' ORDER BY seq) FROM cybertron_work_order_events_fixture
  WHERE work_order_id=${lit(c.work_order_id)}`)}
@@ -200,5 +227,74 @@ async function check(label,fn){try{await fn();console.log('CYBERTRON_LIFECYCLE_'
   assert.equal(await os.markComplete(c,forged),false);
   assert.equal(state(),'CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),0);
  });
- console.log('CYBERTRON_LIFECYCLE_DISPOSABLE_POSTGRES_PASS 13 scenarios; real READY>CLAIMED>COMPLETE audit; zero Airtable/Neon/production writes');
+ await check('TAKEOVER_EXPIRED_NO_RECEIPT',async()=>{
+  reset(2);
+  await assert.rejects(runLifecycle(args('ATTEMPT-A','RUNNER-A',{hooks:{afterClaimed:()=>{
+   q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+   throw Error('SIMULATED_WORKER_A_EXIT');
+  }}})),/SIMULATED_WORKER_A_EXIT/);
+  const next=await runLifecycle(args('ATTEMPT-B','RUNNER-B'));
+  assert.equal(next.status,'COMPLETE_VERIFIED');assert.equal(next.fence,2);
+  assert.equal(statuses(),'READY>CLAIMED>CLAIMED>COMPLETE');
+  assert.equal(q(`SELECT step FROM cybertron_work_order_fixture WHERE work_order_id=${lit(c.work_order_id)}`),'2');
+  assert.equal(count('cybertron_claim_receipt_fixture'),1);
+  const replay=await runLifecycle(args('ATTEMPT-A','RUNNER-A',{hooks:{afterClaimed:()=>{throw Error('REPLAY_TRIGGERED_HOOK')}}}));assert.equal(replay.status,'REPLAY_VERIFIED');
+ });
+ await check('TAKEOVER_OLD_OWNER_CANNOT_COMMIT',async()=>{
+  reset(2);const cs=claimStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await orderStore().markClaimed(c,a),true);
+  q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+  const b=await runLifecycle(args('ATTEMPT-B','RUNNER-B',{hooks:{afterClaimed:()=>{throw Error('STOP_BEFORE_B_RECEIPT')}}})).catch(e=>{assert.match(e.message,/STOP_BEFORE_B_RECEIPT/);return null});
+  assert.equal(b,null);
+  assert.equal(await cs.commitReceipt(receiptFor(c,a)),null);
+  assert.equal(count('cybertron_claim_receipt_fixture'),0);
+  const done=await runLifecycle(args('ATTEMPT-B','RUNNER-B'));assert.equal(done.status,'COMPLETE_VERIFIED');
+  assert.equal(count('cybertron_claim_receipt_fixture'),1);
+ });
+ await check('TAKEOVER_CRASH_AFTER_NEW_LEASE',async()=>{
+  reset(2);const cs=claimStore(),os=orderStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await os.markClaimed(c,a),true);
+  q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B',{hooks:{afterTakeoverLease:()=>{throw Error('SIMULATED_TAKEOVER_EXIT')}}})),/SIMULATED_TAKEOVER_EXIT/);
+  assert.equal(statuses(),'READY>CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),0);
+  const done=await runLifecycle(args('ATTEMPT-B','RUNNER-B'));
+  assert.equal(done.status,'COMPLETE_VERIFIED');assert.equal(statuses(),'READY>CLAIMED>CLAIMED>COMPLETE');
+ });
+ await check('TAKEOVER_LOST_PUBLICATION_ACK',async()=>{
+  reset(2);const cs=claimStore(),os=orderStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await os.markClaimed(c,a),true);
+  q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+  const original=os.transferClaim;os.transferClaim=async(...p)=>{assert.equal(await original(...p),true);throw Error('SIMULATED_LOST_TAKEOVER_ACK')};
+  const done=await runLifecycle(args('ATTEMPT-B','RUNNER-B',{orderStore:os}));
+  assert.equal(done.status,'COMPLETE_VERIFIED');assert.equal(statuses(),'READY>CLAIMED>CLAIMED>COMPLETE');
+ });
+ await check('TAKEOVER_LIVE_LEASE_REFUSED',async()=>{
+  reset(2);const cs=claimStore(),os=orderStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await os.markClaimed(c,a),true);
+  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B')),/TAKEOVER_CLAIM_NOT_ACQUIRED/);
+  assert.equal(statuses(),'READY>CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),0);
+ });
+ await check('TAKEOVER_ATTEMPT_BUDGET_REFUSED',async()=>{
+  reset(1);const cs=claimStore(),os=orderStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await os.markClaimed(c,a),true);
+  q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B')),/ATTEMPT_BUDGET_EXHAUSTED/);
+  assert.equal(statuses(),'READY>CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),0);
+ });
+ await check('TAKEOVER_AFTER_DURABLE_RECEIPT_REFUSED',async()=>{
+  reset(2);const cs=claimStore(),os=orderStore();
+  const a=await cs.tryClaim({work_order_id:c.work_order_id,attempt_id:'ATTEMPT-A',owner:'RUNNER-A',ttl_seconds:300});
+  assert.equal(await os.markClaimed(c,a),true);
+  assert.ok(await cs.commitReceipt(receiptFor(c,a)));
+  q(`UPDATE cybertron_claim_gate_fixture SET expires_at=clock_timestamp()-interval '1 second' WHERE work_order_id=${lit(c.work_order_id)}`);
+  await assert.rejects(runLifecycle(args('ATTEMPT-B','RUNNER-B')),/DURABLE_RECEIPT_PREVENTS_TAKEOVER/);
+  assert.equal(statuses(),'READY>CLAIMED');assert.equal(count('cybertron_claim_receipt_fixture'),1);
+  const done=await runLifecycle(args('ATTEMPT-A','RUNNER-A'));assert.equal(done.status,'COMPLETE_VERIFIED');
+ });
+ console.log('CYBERTRON_LIFECYCLE_DISPOSABLE_POSTGRES_PASS 20 scenarios; real READY>CLAIMED>COMPLETE and bounded takeover; zero Airtable/Neon/production writes');
 })().catch(e=>{console.error(e);process.exitCode=1});
