@@ -54,7 +54,7 @@ jobs:
               logs = request(api + "/actions/jobs/" + str(job["id"]) + "/logs").decode("utf-8", "replace")
               def marked(name):
                   # GitHub logs may include timestamps and ANSI codes.
-                  return bool(re.search(r"(?m)^.*\\b" + re.escape(name) + r":\\s*True\\s*$", logs))
+                  return bool(re.search(r"(?m)^.*\b" + re.escape(name) + r":\s*True\s*$", logs))
               passed = ("AI_REPAIR_005_PASS" in logs and
                         marked("BASELINE_FAIL") and
                         marked("GUARDRAIL_ACCEPTED") and
