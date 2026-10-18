@@ -1,0 +1,76 @@
+name: Cybertron AI provider fallback diagnostic 004
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type FALLBACK_TEST for one nscale non-executing request'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cybertron-repair-fallback-004
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.actor == 'VeritasDesign' && inputs.confirm == 'FALLBACK_TEST'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Diagnose single model code response without executing it
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_CANARY }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, re, sys, urllib.request, urllib.error
+          token = os.getenv("HF_TOKEN","")
+          if not token.startswith("hf_"):
+              sys.exit("BLOCKED: missing HF token")
+          original = "function discount(price, percent) { return price - percent; }\nmodule.exports = { discount };\n"
+          payload = {
+            "model":"Qwen/Qwen3-4B-Instruct-2507:nscale",
+            "messages":[
+              {"role":"system","content":"Respond only with valid JavaScript containing a function discount(price, percent) and module.exports={discount}. No markdown. Do not use any other API."},
+              {"role":"user","content":"Correct this percentage-discount bug (100,10 => 90; 50,20 => 40; 100,0 => 100):\n"+original}
+            ],
+            "max_tokens":192,
+            "temperature":0
+          }
+          request=urllib.request.Request("https://router.huggingface.co/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},method="POST")
+          try:
+              with urllib.request.urlopen(request,timeout=45) as response:
+                  body=json.load(response)
+          except urllib.error.HTTPError as exc:
+              sys.exit("HTTP_FAILURE: "+str(exc.code)+"; body withheld")
+          except Exception as exc:
+              sys.exit("REQUEST_FAILURE: "+type(exc).__name__)
+          code=body.get("choices",[{}])[0].get("message",{}).get("content","")
+          if not isinstance(code,str):
+              sys.exit("INVALID_CONTENT_TYPE")
+          usage=body.get("usage") or {}
+          # Only structural characteristics and hash, never raw output.
+          features={
+              "bytes":len(code.encode("utf-8")),
+              "sha256":hashlib.sha256(code.encode("utf-8")).hexdigest(),
+              "starts_markdown_fence":code.lstrip().startswith("```"),
+              "mentions_function":bool(re.search(r"function\s+discount\s*\(",code)),
+              "mentions_exports":"module.exports" in code,
+              "mentions_return":bool(re.search(r"return\s+",code)),
+              "mentions_price_minus":bool(re.search(r"price\s*-\s*\(",code)),
+              "mentions_percent_divide":bool(re.search(r"percent\s*/\s*100",code)),
+              "has_non_ascii":any(ord(c)>127 for c in code),
+              "has_crlf":"\r" in code,
+              "starts_function":code.lstrip().startswith("function")
+          }
+          print("REQUEST_COUNT: 1")
+          print("USAGE:",json.dumps({k:usage.get(k) for k in ("prompt_tokens","completion_tokens","total_tokens")},sort_keys=True))
+          print("SOURCE_CHARACTERISTICS:",json.dumps(features,sort_keys=True))
+          print("CODE_NOT_EXECUTED: True")
+          print("BILLING_UNKNOWN: check HF billing")
+          PY
