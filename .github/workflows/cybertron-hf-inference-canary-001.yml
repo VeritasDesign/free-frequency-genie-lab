@@ -1,0 +1,66 @@
+name: Cybertron HF inference canary 001
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type SINGLE_TEST to approve one metered inference request'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cybertron-hf-inference-canary
+  cancel-in-progress: false
+
+jobs:
+  one-inference:
+    if: github.actor == 'VeritasDesign' && inputs.confirm == 'SINGLE_TEST'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Single inference request, no repo checkout or writes
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_CANARY }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, urllib.request, urllib.error
+          token = os.environ.get("HF_TOKEN", "")
+          if not token.startswith("hf_"):
+              sys.exit("BLOCKED: missing HF_TOKEN_CANARY")
+          payload = {
+              "model": "Qwen/Qwen3-4B-Instruct-2507:featherless-ai",
+              "messages": [{"role":"user","content":"Reply with exactly CYBERTRON_CANARY_OK"}],
+              "max_tokens": 24,
+              "temperature": 0
+          }
+          request = urllib.request.Request(
+              "https://router.huggingface.co/v1/chat/completions",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+              method="POST")
+          try:
+              with urllib.request.urlopen(request, timeout=35) as response:
+                  result = json.load(response)
+          except urllib.error.HTTPError as error:
+              sys.exit("INFERENCE FAILED: HTTP "+str(error.code)+"; response withheld")
+          except Exception as error:
+              sys.exit("INFERENCE FAILED: "+type(error).__name__)
+          try:
+              answer = result["choices"][0]["message"]["content"].strip()
+          except (KeyError, IndexError, TypeError, AttributeError):
+              sys.exit("INFERENCE FAILED: unexpected response structure")
+          usage = result.get("usage", {})
+          print("INFERENCE_USAGE_TOKENS:", json.dumps({
+              "prompt_tokens": usage.get("prompt_tokens"),
+              "completion_tokens": usage.get("completion_tokens"),
+              "total_tokens": usage.get("total_tokens")}, sort_keys=True))
+          print("REQUEST_COUNT: 1")
+          print("CHARGE_AMOUNT: UNKNOWN — check Hugging Face billing")
+          print("EXACT_RESPONSE_MATCH:", answer == "CYBERTRON_CANARY_OK")
+          if answer != "CYBERTRON_CANARY_OK":
+              sys.exit("INFERENCE FAILED: output mismatch")
+          print("INFERENCE PASS: one model response; NOT coding agent proof")
+          PY
