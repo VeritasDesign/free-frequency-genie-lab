@@ -1,0 +1,40 @@
+name: Col animal alphabet isolated validation 001
+on:
+  pull_request:
+    paths:
+      - 'lab/col-animal-alphabet-v0/**'
+      - '.github/workflows/col-animal-alphabet-validation-001.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Independently verify A-Z animal remote source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('lab/col-animal-alphabet-v0/index.html').read_text()
+          matches=re.findall(r'\["([A-Z])","([^"]+)","([^"]+)"\]',src)
+          expected=[chr(i) for i in range(65,91)]
+          assert [m[0] for m in matches]==expected, "Expected exactly one A-Z entry in order"
+          catalog={letter:name for letter,name,_ in matches}
+          assert catalog['A']=='Alligator'
+          assert catalog['B']=='Bear'
+          assert catalog['U']=='Sea Urchin'
+          assert 'sequence++' in src and 'animal-selection' in src, "Missing per-tap event contract"
+          assert 'not connected to Roku yet' in src, "Must preserve honest prototype warning"
+          assert 'fetch(' not in src and 'XMLHttpRequest' not in src, "Prototype must remain network-free"
+          print('COL_ALPHABET_26_PASS')
+          print('COL_ABC_URCHIN_PASS')
+          print('COL_REPEAT_EVENT_CONTRACT_PASS')
+          print('COL_NO_NETWORK_PROTOTYPE_PASS')
+          print('NOT_PROVEN: browser runtime, Roku receiver, video playback, installability')
+          PY
