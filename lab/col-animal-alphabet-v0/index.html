@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#163e38"><title>Col's Animal Alphabet</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#17382d;background:#f4f8ef}*{box-sizing:border-box}body{margin:0}header{background:#163e38;color:white;padding:20px 16px 16px;text-align:center}h1{margin:0;font-size:clamp(1.6rem,5vw,2.5rem)}header p{margin:7px 0 0;font-size:1rem}.wrap{max-width:960px;margin:auto;padding:14px}.status{border-radius:12px;background:#fff3cf;padding:12px 14px;margin-bottom:15px;line-height:1.4}nav{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 18px}nav a{display:grid;place-items:center;min-width:42px;min-height:44px;padding:4px 8px;background:#dbeee5;color:#17382d;border-radius:9px;text-decoration:none;font-weight:800}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}.animal{background:white;border:2px solid #c9d9d0;border-radius:17px;min-height:156px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;color:#17382d;touch-action:manipulation}.animal:focus-visible{outline:4px solid #ffb22a}.animal:active{transform:scale(.97)}.letter{font-size:1.2rem;font-weight:800}.emoji{font-size:3.5rem;line-height:1.2}.name{font-size:1.13rem;font-weight:750}.selected{border-color:#f19a26;background:#fff3dc}.hint{margin:15px 0;color:#425c52;font-size:.95rem}.log{padding:12px;background:white;border-radius:12px;margin:16px 0}output{display:block;font-weight:700}small{display:block;margin-top:5px;color:#4a625a}@media(min-width:700px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+</style></head><body>
+<header><h1>Col's Animal Alphabet 🦁</h1><p>Touch an animal to choose it!</p></header>
+<main class="wrap"><div class="status" role="status"><strong>Tablet prototype — not connected to Roku yet.</strong> Animal taps are recorded here for testing. No video is sent to the TV.</div>
+<nav id="alphabet" aria-label="Jump to an animal letter"></nav><section class="grid" id="animals" aria-label="Animal buttons"></section>
+<section class="log" aria-live="polite"><output id="last">Choose an animal above.</output><small id="count">Taps: 0</small></section>
+<p class="hint">Tap the same animal twice: both taps are recorded separately. The Roku receiver will later use these separate events to restart the video.</p>
+</main><script>
+"use strict";
+const animals=[
+["A","Alligator","🐊"],["B","Bear","🐻"],["C","Cow","🐄"],["D","Deer","🦌"],["E","Elephant","🐘"],["F","Fox","🦊"],["G","Giraffe","🦒"],["H","Hippo","🦛"],["I","Iguana","🦎"],["J","Jellyfish","🪼"],["K","Kangaroo","🦘"],["L","Lion","🦁"],["M","Monkey","🐒"],["N","Newt","🦎"],["O","Owl","🦉"],["P","Penguin","🐧"],["Q","Quail","🐦"],["R","Raccoon","🦝"],["S","Seal","🦭"],["T","Tiger","🐯"],["U","Sea Urchin","🌊"],["V","Vulture","🦅"],["W","Wolf","🐺"],["X","X-ray tetra","🐟"],["Y","Yak","🐂"],["Z","Zebra","🦓"]];
+const alphabet=document.getElementById("alphabet"),grid=document.getElementById("animals");
+let sequence=0;
+for(const [letter,name,emoji] of animals){
+const jump=document.createElement("a");jump.href="#animal-"+letter;jump.textContent=letter;alphabet.append(jump);
+const button=document.createElement("button");button.type="button";button.className="animal";button.id="animal-"+letter;button.setAttribute("aria-label",letter+" is for "+name);
+for(const [cls,txt] of [["letter",letter],["emoji",emoji],["name",name]]){const span=document.createElement("span");span.className=cls;span.textContent=txt;button.append(span);}
+button.addEventListener("click",()=>{sequence++;for(const el of grid.children)el.classList.remove("selected");button.classList.add("selected");document.getElementById("last").textContent="Tap #"+sequence+": "+name+" selected";document.getElementById("count").textContent="Taps: "+sequence;const event=new CustomEvent("animal-selection",{detail:{animal:name,letter,sequence}});window.dispatchEvent(event);});
+grid.append(button);
+}
+</script></body></html>
