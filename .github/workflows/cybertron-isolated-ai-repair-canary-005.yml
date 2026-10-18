@@ -1,0 +1,110 @@
+name: Cybertron isolated AI repair canary 005
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type REPAIR_005 to authorize ONE metered inference call'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cybertron-ai-repair-005
+  cancel-in-progress: false
+
+jobs:
+  isolated-repair:
+    if: github.actor == 'VeritasDesign' && inputs.confirm == 'REPAIR_005'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: One model repair, strict guardrail, independent tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_CANARY }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, subprocess, sys, tempfile, urllib.error, urllib.request
+          token = os.getenv("HF_TOKEN", "")
+          if not token.startswith("hf_"):
+              sys.exit("BLOCKED: missing HF_TOKEN_CANARY")
+          model = "Qwen/Qwen3-4B-Instruct-2507:nscale"
+          original = "function discount(price, percent) { return price - percent; }\nmodule.exports = { discount };\n"
+          tests = """const assert = require('node:assert/strict');
+          const { discount } = require('./discount');
+          assert.equal(discount(100, 10), 90);
+          assert.equal(discount(50, 20), 40);
+          assert.equal(discount(100, 0), 100);
+          console.log('THREE_ASSERTIONS_PASS');
+          """
+          def run_test(root):
+              return subprocess.run(["node", "test.cjs"], cwd=root, capture_output=True, text=True, timeout=8)
+          with tempfile.TemporaryDirectory(prefix="cybertron-isolated-repair-005-") as tmp:
+              root = pathlib.Path(tmp)
+              src = root / "discount.js"
+              src.write_text(original)
+              (root / "test.cjs").write_text(tests)
+              baseline = run_test(root)
+              if baseline.returncode == 0:
+                  sys.exit("BLOCKED: baseline unexpectedly passed")
+              print("BASELINE_FAIL: True")
+              payload = {
+                  "model": model,
+                  "messages": [
+                      {"role": "system", "content": "You fix one CommonJS JavaScript function. Output exactly two JavaScript statements and nothing else: function discount(price, percent) { return price * (1 - percent / 100); } followed by module.exports = { discount };. No markdown or explanation."},
+                      {"role": "user", "content": "Repair this broken function so the independent tests pass. Return the complete corrected discount.js only:\n" + original}
+                  ],
+                  "max_tokens": 160,
+                  "temperature": 0
+              }
+              req = urllib.request.Request(
+                  "https://router.huggingface.co/v1/chat/completions",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+                  method="POST")
+              try:
+                  with urllib.request.urlopen(req, timeout=45) as response:
+                      result = json.load(response)
+              except urllib.error.HTTPError as exc:
+                  sys.exit("INFERENCE_HTTP_FAILURE: " + str(exc.code) + "; response body withheld")
+              except Exception as exc:
+                  sys.exit("INFERENCE_TRANSPORT_FAILURE: " + type(exc).__name__)
+              try:
+                  code = result["choices"][0]["message"]["content"]
+              except (KeyError, IndexError, TypeError, AttributeError):
+                  sys.exit("BLOCKED: invalid model response")
+              if not isinstance(code, str) or not code.strip() or len(code.encode()) > 4096:
+                  sys.exit("BLOCKED: empty or oversized model output")
+              # Fail closed: never execute arbitrary generated code. Accept ONLY a tiny,
+              # exact, independently understood arithmetic program.
+              pattern = r"\s*function\s+discount\s*\(\s*price\s*,\s*percent\s*\)\s*\{\s*return\s+price\s*\*\s*\(\s*1\s*-\s*percent\s*/\s*100\s*\)\s*;\s*\}\s*;?\s*module\.exports\s*=\s*\{\s*discount\s*\}\s*;?\s*"
+              accepted = re.fullmatch(pattern, code) is not None
+              print("MODEL:", model)
+              print("REQUEST_COUNT: 1")
+              usage = result.get("usage") or {}
+              print("USAGE:", json.dumps({k: usage.get(k) for k in ("prompt_tokens", "completion_tokens", "total_tokens")}, sort_keys=True))
+              print("RESPONSE_SHA256:", hashlib.sha256(code.encode()).hexdigest())
+              print("GUARDRAIL_ACCEPTED:", accepted)
+              print("BILLING_USD: UNKNOWN; check Hugging Face billing")
+              if not accepted:
+                  sys.exit("BLOCKED: model response outside exact executable allowlist; NOT executed")
+              before = hashlib.sha256(src.read_bytes()).hexdigest()
+              src.write_text(code.strip() + "\n")
+              syntax = subprocess.run(["node", "--check", "discount.js"], cwd=root, capture_output=True, text=True, timeout=8)
+              if syntax.returncode:
+                  sys.exit("BLOCKED: syntax failure")
+              after = hashlib.sha256(src.read_bytes()).hexdigest()
+              final = run_test(root)
+              passed = final.returncode == 0 and "THREE_ASSERTIONS_PASS" in final.stdout and before != after
+              print("SOURCE_CHANGED:", before != after)
+              print("SHA256_BEFORE:", before)
+              print("SHA256_AFTER:", after)
+              print("INDEPENDENT_TESTS_PASS:", passed)
+              print("REPO_WRITES: NONE; DEPLOY: NONE; PR: NONE")
+              if not passed:
+                  sys.exit("AI_REPAIR_CANARY_FAILED")
+              print("AI_REPAIR_005_PASS")
+          PY
