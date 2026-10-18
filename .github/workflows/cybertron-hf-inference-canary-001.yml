@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type FREE_ONLY to permit exactly one inference request'
+        description: 'Type SINGLE_TEST to approve one metered inference request'
         required: true
         type: string
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   one-inference:
-    if: github.actor == 'VeritasDesign' && inputs.confirm == 'FREE_ONLY'
+    if: github.actor == 'VeritasDesign' && inputs.confirm == 'SINGLE_TEST'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -31,7 +31,7 @@ jobs:
           if not token.startswith("hf_"):
               sys.exit("BLOCKED: missing HF_TOKEN_CANARY")
           payload = {
-              "model": "Qwen/Qwen3-4B-Instruct-2507:fastest",
+              "model": "Qwen/Qwen3-4B-Instruct-2507:featherless-ai",
               "messages": [{"role":"user","content":"Reply with exactly CYBERTRON_CANARY_OK"}],
               "max_tokens": 24,
               "temperature": 0
@@ -52,6 +52,13 @@ jobs:
               answer = result["choices"][0]["message"]["content"].strip()
           except (KeyError, IndexError, TypeError, AttributeError):
               sys.exit("INFERENCE FAILED: unexpected response structure")
+          usage = result.get("usage", {})
+          print("INFERENCE_USAGE_TOKENS:", json.dumps({
+              "prompt_tokens": usage.get("prompt_tokens"),
+              "completion_tokens": usage.get("completion_tokens"),
+              "total_tokens": usage.get("total_tokens")}, sort_keys=True))
+          print("REQUEST_COUNT: 1")
+          print("CHARGE_AMOUNT: UNKNOWN — check Hugging Face billing")
           print("EXACT_RESPONSE_MATCH:", answer == "CYBERTRON_CANARY_OK")
           if answer != "CYBERTRON_CANARY_OK":
               sys.exit("INFERENCE FAILED: output mismatch")
