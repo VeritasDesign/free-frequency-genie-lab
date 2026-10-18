@@ -1,0 +1,106 @@
+name: Cybertron AI code repair canary 002
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type REPAIR_TEST for one isolated metered model request'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cybertron-ai-repair-002
+  cancel-in-progress: false
+
+jobs:
+  repair-test:
+    if: github.actor == 'VeritasDesign' && inputs.confirm == 'REPAIR_TEST'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Single isolated AI repair and independent tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_CANARY }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, subprocess, sys, tempfile, urllib.request, urllib.error
+
+          token = os.getenv("HF_TOKEN", "")
+          if not token.startswith("hf_"):
+              sys.exit("BLOCKED: Missing HF_TOKEN_CANARY")
+          original = "function discount(price, percent) { return price - percent; }\nmodule.exports = { discount };\n"
+          tests = """const assert = require('node:assert/strict');
+          const { discount } = require('./discount');
+          assert.equal(discount(100, 10), 90);
+          assert.equal(discount(50, 20), 40);
+          assert.equal(discount(100, 0), 100);
+          console.log('THREE_ASSERTIONS_PASS');
+          """
+          with tempfile.TemporaryDirectory(prefix="cybertron-repair-") as directory:
+              root = pathlib.Path(directory)
+              src = root / "discount.js"
+              check = root / "test.cjs"
+              src.write_text(original)
+              check.write_text(tests)
+              def test():
+                  return subprocess.run(["node", "test.cjs"], cwd=root, capture_output=True, text=True, timeout=8)
+              baseline = test()
+              if baseline.returncode == 0:
+                  sys.exit("BLOCKED: Baseline test unexpectedly passed")
+              print("BASELINE_FAIL: True")
+              before = hashlib.sha256(src.read_bytes()).hexdigest()
+              payload = {
+                  "model": "Qwen/Qwen3-4B-Instruct-2507:featherless-ai",
+                  "messages": [
+                      {"role":"system","content":"You repair JavaScript source code. Respond with ONLY complete valid JavaScript source, without markdown, explanation, or shell commands."},
+                      {"role":"user","content":"Fix the discount function. The tests require discount(100,10)=90, discount(50,20)=40 and discount(100,0)=100. Preserve CommonJS export. Source:\n" + original}
+                  ],
+                  "max_tokens": 256,
+                  "temperature": 0
+              }
+              req = urllib.request.Request(
+                  "https://router.huggingface.co/v1/chat/completions",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+                  method="POST")
+              try:
+                  with urllib.request.urlopen(req, timeout=45) as response:
+                      result = json.load(response)
+              except urllib.error.HTTPError as exc:
+                  sys.exit("INFERENCE_HTTP_FAILURE: "+str(exc.code)+"; error body withheld")
+              except Exception as exc:
+                  sys.exit("INFERENCE_TRANSPORT_FAILURE: "+type(exc).__name__)
+              try:
+                  code = result["choices"][0]["message"]["content"].strip()
+              except (KeyError, IndexError, TypeError, AttributeError):
+                  sys.exit("BLOCKED: invalid model response shape")
+              if not code or len(code.encode()) > 4096 or "&#96;" in code or "&#36;(" in code:
+                  sys.exit("BLOCKED: empty, oversized or suspicious response")
+              if not re.fullmatch(r"[\x09\x0a\x0d\x20-\x7e]*", code):
+                  sys.exit("BLOCKED: non-ASCII model output")
+              # Limit accepted source to exactly the single arithmetic formula and expected export.
+              pattern = r"function\s+discount\s*\(\s*price\s*,\s*percent\s*\)\s*\{\s*return\s+price\s*\*\s*\(\s*1\s*-\s*percent\s*/\s*100\s*\)\s*;?\s*\}\s*;?\s*module\.exports\s*=\s*\{\s*discount\s*\}\s*;?\s*"
+              if not re.fullmatch(pattern, code):
+                  sys.exit("BLOCKED: model-generated source failed strict allowlist (not evaluated)")
+              src.write_text(code + "\n")
+              syntax = subprocess.run(["node", "--check", "discount.js"], cwd=root, capture_output=True, text=True, timeout=8)
+              if syntax.returncode:
+                  sys.exit("BLOCKED: syntax check failed")
+              final = test()
+              after = hashlib.sha256(src.read_bytes()).hexdigest()
+              usage = result.get("usage") or {}
+              print("MODEL:", payload["model"])
+              print("USAGE:", json.dumps({k:usage.get(k) for k in ("prompt_tokens","completion_tokens","total_tokens")}, sort_keys=True))
+              print("REQUEST_COUNT: 1")
+              print("SHA256_BEFORE:", before)
+              print("SHA256_AFTER:", after)
+              print("SOURCE_CHANGED:", before != after)
+              print("TESTS_PASS:", final.returncode == 0 and "THREE_ASSERTIONS_PASS" in final.stdout)
+              print("CHARGE_USD: UNKNOWN, read Hugging Face billing")
+              if before == after or final.returncode != 0 or "THREE_ASSERTIONS_PASS" not in final.stdout:
+                  sys.exit("REPAIR_CANARY_FAILED")
+              print("AI_CODE_REPAIR_CANARY_PASS")
+          PY
