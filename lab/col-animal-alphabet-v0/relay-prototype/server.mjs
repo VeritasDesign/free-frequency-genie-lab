@@ -8,7 +8,7 @@ const secureEqual = (a,b) => {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x,y);
 };
-export function createRelay({now=()=>Date.now(), origin='http://localhost:8788', pairingTtlMs=120000}={}) {
+export function createRelay({now=()=>Date.now(), origin='http://localhost:8788', pairingTtlMs=120000, bootstrapSecret=null}={}) {
   const sessions=new Map();
   const requests=new Map();
   function cleanup() {
@@ -49,6 +49,9 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
       // Local proof only. A real service must authenticate receiver bootstrap
       // before issuing its device credential; never expose this endpoint publicly.
       if(!limit('start:'+remote,5,60000))return send(res,429,{error:'rate_limited'});
+      // Optional local development bootstrap gate. A real public deployment also
+      // requires durable provisioning, authorization, storage and device ownership.
+      if(bootstrapSecret && !secureEqual(bearer,bootstrapSecret))return send(res,401,{error:'bootstrap_unauthorized'});
       const id=token(),receiverToken=token();
       let code;
       do{code=String(randomInt(0,1000000)).padStart(6,'0');}while([...sessions.values()].some(s=>s.code===code));
@@ -89,6 +92,6 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
   return {handle};
 }
 if(process.argv[1] && import.meta.url===new URL('file://'+process.argv[1]).href){
-  const relay=createRelay({origin:process.env.ALLOWED_ORIGIN||'http://localhost:8788'});
+  const relay=createRelay({origin:process.env.ALLOWED_ORIGIN||'http://localhost:8788',bootstrapSecret:process.env.RELAY_BOOTSTRAP_SECRET||null});
   createServer((req,res)=>relay.handle(req,res).catch(()=>{res.writeHead(500);res.end();})).listen(Number(process.env.PORT||8788),'127.0.0.1',()=>console.log('Local-only volatile relay listening'));
 }
