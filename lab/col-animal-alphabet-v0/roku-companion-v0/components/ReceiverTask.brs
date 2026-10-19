@@ -31,7 +31,8 @@ sub pollCommands()
         transfer.SetMessagePort(port)
         if transfer.AsyncGetToString() then
             response = wait(7000, port)
-            if type(response) = "roUrlEvent" and response.GetResponseCode() = 200 then
+            if type(response) = "roUrlEvent" then
+                if response.GetResponseCode() = 200 then
                 payload = ParseJson(response.GetString())
                 if type(payload) = "roAssociativeArray" then
                     if payload.command <> invalid and type(payload.command) = "roAssociativeArray" then
@@ -50,6 +51,10 @@ sub pollCommands()
                 else
                     failureCount = failureCount + 1
                     m.top.connectionState = "Invalid response"
+                end if
+                else
+                    failureCount = failureCount + 1
+                    m.top.connectionState = "Not connected"
                 end if
             else
                 failureCount = failureCount + 1
