@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeScene" extends="Scene">
+  <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x163e38FF"/>
+    <Label id="heading" text="Col's Animal Alphabet" width="1700" height="100" translation="[110,70]" color="0xFFFFFFFF" font="font:LargeBoldSystemFont"/>
+    <Label id="status" text="Video test: press OK to play sample" width="1700" height="90" translation="[110,185]" color="0xFFFFFFFF" font="font:MediumSystemFont"/>
+    <Label id="instructions" text="OK: play / restart | Back: stop | Home: exit" width="1700" height="90" translation="[110,275]" color="0xFFFFFFFF" font="font:MediumSystemFont"/>
+    <Video id="video" width="1540" height="660" translation="[190,380]" />
+  </children>
+</component>
