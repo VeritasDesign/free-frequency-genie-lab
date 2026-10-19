@@ -29,6 +29,8 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
     const url=new URL(req.url,'http://localhost');
     if(req.method==='GET' && url.pathname==='/health') return send(res,200,{ok:true,mode:'volatile-prototype'});
     const remote=req.socket.remoteAddress||'unknown';
+    // This proof must never become an accidental public service.
+    if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(remote))return send(res,403,{error:'local_only'});
     if(!limit('ip:'+remote,120)) return send(res,429,{error:'rate_limited'});
     if(req.method==='OPTIONS') {
       res.writeHead(204,{'access-control-allow-origin':origin,'access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'content-type,authorization','vary':'Origin'});return res.end();
@@ -44,6 +46,8 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
     const bearer=(req.headers.authorization||'').match(/^Bearer ([-_a-zA-Z0-9]+)$/)?.[1];
     const auth=(s,key)=>bearer && secureEqual(hash(bearer),s[key]);
     if(req.method==='POST' && url.pathname==='/api/pair/start'){
+      // Local proof only. A real service must authenticate receiver bootstrap
+      // before issuing its device credential; never expose this endpoint publicly.
       if(!limit('start:'+remote,5,60000))return send(res,429,{error:'rate_limited'});
       const id=token(),receiverToken=token();
       let code;
@@ -53,7 +57,7 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
     }
     if(req.method==='POST' && url.pathname==='/api/pair/complete'){
       if(!limit('complete:'+remote,10,60000))return send(res,429,{error:'rate_limited'});
-      const s=[...sessions.entries()].find(([,v])=>v.code===body.code && !v.paired && v.expiresAt>now());
+      const s=[...sessions.entries()].find(([,v])=>typeof body.code==='string' && secureEqual(v.code,body.code) && !v.paired && v.expiresAt>now());
       if(!s)return send(res,404,{error:'invalid_or_expired_code'});
       const [id,session]=s;const senderToken=token();
       session.senderHash=hash(senderToken);session.code=null;session.paired=true;session.expiresAt=now()+24*60*60*1000;
