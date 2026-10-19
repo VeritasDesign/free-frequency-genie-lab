@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeScene" extends="Scene">
+  <children>
+    <Rectangle width="1920" height="1080" color="0x163e38FF"/>
+    <Label id="heading" text="Col's Animal Alphabet" width="1700" height="130" translation="[110,220]" color="0xFFFFFFFF" font="font:LargeBoldSystemFont"/>
+    <Label id="message" text="Roku receiver proof — not paired yet" width="1700" height="100" translation="[110,410]" color="0xFFFFFFFF" font="font:MediumSystemFont"/>
+    <Label id="details" text="No video or tablet connection in this build." width="1700" height="100" translation="[110,520]" color="0xFFFFFFFF" font="font:MediumSystemFont"/>
+  </children>
+</component>
