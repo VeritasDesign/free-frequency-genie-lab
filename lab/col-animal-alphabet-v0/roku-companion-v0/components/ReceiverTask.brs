@@ -36,7 +36,7 @@ sub pollCommands()
                 if type(payload) = "roAssociativeArray" then
                     if payload.command <> invalid and type(payload.command) = "roAssociativeArray" then
                         candidate = payload.command
-                        if type(candidate.commandId) = "Integer" and type(candidate.letter) = "roString" then
+                        if (type(candidate.commandId) = "roInteger" or type(candidate.commandId) = "Integer") and (type(candidate.letter) = "roString" or type(candidate.letter) = "String") then
                             if candidate.commandId > afterId and Len(candidate.letter) = 1 then
                                 if Instr(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", candidate.letter) > 0 then
                                     afterId = candidate.commandId
