@@ -28,7 +28,10 @@ jobs:
           catalog={letter:name for letter,name,_ in matches}
           assert catalog['A']=='Alligator'
           assert catalog['B']=='Bear'
-          assert catalog['U']=='Sea Urchin'
+          assert catalog['U']=='Urchin'
+          assert catalog['X']=='X-ray Fish'
+          assert 'Purple sea urchin illustration' in src
+          assert 'Jellyfish illustration' in src
           assert 'sequence++' in src and 'animal-selection' in src, "Missing per-tap event contract"
           assert 'not connected to Roku yet' in src, "Must preserve honest prototype warning"
           assert 'fetch(' not in src and 'XMLHttpRequest' not in src, "Prototype must remain network-free"
