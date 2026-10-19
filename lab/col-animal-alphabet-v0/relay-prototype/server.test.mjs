@@ -48,3 +48,20 @@ test('pair code expires',async()=>{
     assert.equal(res.status,404);
   }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+
+test('optional receiver bootstrap secret rejects anonymous and incorrect requests',async()=>{
+  const relay=createRelay({bootstrapSecret:'test-only-local-bootstrap-secret'});
+  const server=createServer((req,res)=>relay.handle(req,res));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try{
+    const base='http://127.0.0.1:'+server.address().port+'/api/pair/start';
+    const call=async(auth)=>fetch(base,{method:'POST',headers:auth?{authorization:'Bearer '+auth}:{},body:'{}'});
+    assert.equal((await call()).status,401);
+    assert.equal((await call('wrong')).status,401);
+    const ok=await call('test-only-local-bootstrap-secret');
+    assert.equal(ok.status,201);
+    const data=await ok.json();
+    assert.match(data.code,/^\d{6}$/);
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});
