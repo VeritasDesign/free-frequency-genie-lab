@@ -1,0 +1,34 @@
+name: Cybertron Operations Gate - Validation
+on:
+  pull_request:
+    paths:
+      - 'docs/cybertron-operations-gate-v0.md'
+      - '.github/workflows/cybertron-ops-validation.yml'
+      - 'lab/col-animal-alphabet-v0/cloudflare-bridge/**'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify gate policy and fixed relay target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/cybertron-operations-gate-v0.md
+          grep -qx 'name = "col-animal-relay-isolated"' lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml
+          node --check lab/col-animal-alphabet-v0/cloudflare-bridge/worker.mjs
+      - name: Test relay behavior
+        run: node --test lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs
+      - name: Validation receipt
+        shell: bash
+        run: |
+          echo "Validated commit: $GITHUB_SHA"
+          echo "Validation only. No credentials, deployment, provisioning, or production changes."
