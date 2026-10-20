@@ -127,7 +127,9 @@ export default {
       if(!env.TABLET_ALLOWED_ORIGIN||origin!==env.TABLET_ALLOWED_ORIGIN)return json(403,{error:'origin_not_allowed'});
       if(req.method==='OPTIONS'){
         const requested=req.headers.get('access-control-request-headers')||'';
-        if(!/^[a-zA-Z0-9, -]*$/.test(requested))return json(400,{error:'invalid_preflight'});
+        const allowed=new Set(['authorization','content-type']);
+        const headers=requested.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+        if(!headers.every(x=>allowed.has(x)))return json(403,{error:'preflight_header_not_allowed'});
         return new Response(null,{status:204,headers:{
           'access-control-allow-origin':origin,
           'access-control-allow-methods':'POST, GET, OPTIONS',
