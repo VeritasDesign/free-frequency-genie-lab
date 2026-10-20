@@ -47,3 +47,17 @@ test('worker rejects missing routing ID and unsupported HTTP method',async()=>{
   const response=await instance.fetch(new Request('https://example.workers.dev/api/pair/start',{method:'PUT'}));
   assert.equal(response.status,405);
 });
+
+test('tablet browser origin is exact-match and preflight is bounded',async()=>{
+  const env={TABLET_ALLOWED_ORIGIN:'https://col-animal-alphabet-preview.vercel.app',COL_RECEIVERS:{idFromName:x=>x,get:()=>new ColReceiver({storage:new Storage()},{})}};
+  const endpoint='https://example.workers.dev/api/pair/start?receiverId=sampleReceiver123';
+  const blocked=await worker.fetch(new Request(endpoint,{method:'POST',headers:{origin:'https://untrusted.example'},body:'{}'}),env);
+  assert.equal(blocked.status,403);
+  assert.equal(blocked.headers.get('access-control-allow-origin'),null);
+  const preflight=await worker.fetch(new Request(endpoint,{method:'OPTIONS',headers:{origin:env.TABLET_ALLOWED_ORIGIN,'access-control-request-headers':'authorization, content-type'}}),env);
+  assert.equal(preflight.status,204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'),env.TABLET_ALLOWED_ORIGIN);
+  const actual=await worker.fetch(new Request(endpoint,{method:'POST',headers:{origin:env.TABLET_ALLOWED_ORIGIN},body:'{}'}),env);
+  assert.equal(actual.status,401);
+  assert.equal(actual.headers.get('access-control-allow-origin'),env.TABLET_ALLOWED_ORIGIN);
+});
