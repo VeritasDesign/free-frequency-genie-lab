@@ -11,3 +11,6 @@ new_sqlite_classes = ["ColReceiver"]
 
 # No routes, account IDs, secrets or production triggers in source.
 # Owner secret must be supplied securely at deployment, never committed.
+
+[vars]
+TABLET_ALLOWED_ORIGIN = "https://col-animal-alphabet-preview.vercel.app"
