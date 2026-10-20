@@ -10,6 +10,7 @@ export class DurableCommandCore {
     // Durable Objects serialize requests for a single receiver; transaction
     // preserves the command counter and dedupe receipt across restarts.
     return this.storage.transaction(async tx => {
+      if (await tx.get('revoked')) return {status:403,error:'receiver_revoked'};
       const receiptKey = 'event:' + clientEventId;
       const prior = await tx.get(receiptKey);
       if (prior) {
@@ -27,6 +28,7 @@ export class DurableCommandCore {
   }
   async poll(after) {
     if (!Number.isSafeInteger(after) || after < 0) return {status:400,error:'invalid_cursor'};
+    if (await this.storage.get('revoked')) return {status:403,error:'receiver_revoked'};
     const command = await this.storage.get('latestCommand');
     return {status:200,command:command && command.commandId > after ? command : null};
   }
