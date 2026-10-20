@@ -61,3 +61,16 @@ test('tablet browser origin is exact-match and preflight is bounded',async()=>{
   assert.equal(actual.status,401);
   assert.equal(actual.headers.get('access-control-allow-origin'),env.TABLET_ALLOWED_ORIGIN);
 });
+
+test('durable command receipts stay bounded after repeated distinct taps',async()=>{
+  const storage=new Storage();
+  const {DurableCommandCore}=await import('./durable-core.mjs');
+  const core=new DurableCommandCore(storage);
+  for(let i=0;i<150;i++){
+    const result=await core.select({letter:'B',clientEventId:'bear-event-'+String(i).padStart(4,'0')});
+    assert.equal(result.status,200);
+  }
+  assert.equal((await storage.get('receiptQueue')).length,128);
+  assert.equal(await storage.get('event:bear-event-0000'),undefined);
+  assert.equal((await core.poll(149)).command.commandId,150);
+});
