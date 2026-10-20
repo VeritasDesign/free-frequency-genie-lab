@@ -89,3 +89,11 @@ test('POST body limit counts UTF-8 bytes, not just characters',async()=>{
   const req=new Request('https://example.workers.dev/api/pair/complete',{method:'POST',body:oversized});
   assert.equal((await instance.fetch(req)).status,413);
 });
+
+test('invalid UTF-8 body is rejected without a server exception',async()=>{
+  const instance=new ColReceiver({storage:new Storage()},{});
+  const req=new Request('https://example.workers.dev/api/pair/complete',{method:'POST',body:new Uint8Array([0xff,0xfe])});
+  const response=await instance.fetch(req);
+  assert.equal(response.status,400);
+  assert.equal((await response.json()).error,'invalid_body');
+});
