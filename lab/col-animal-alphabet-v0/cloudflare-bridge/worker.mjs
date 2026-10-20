@@ -32,7 +32,8 @@ export class ColReceiver {
       }
       const data=new Uint8Array(bytes);let offset=0;
       for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.byteLength;}
-      const raw=new TextDecoder('utf-8',{fatal:true}).decode(data);
+      let raw;
+      try{raw=new TextDecoder('utf-8',{fatal:true}).decode(data);}catch{return json(400,{error:'invalid_body'});}
       try{body=JSON.parse(raw||'{}');if(!body||typeof body!=='object'||Array.isArray(body))throw Error();}catch{return json(400,{error:'invalid_body'});}
     }
     if(path==='/api/provision'){
