@@ -1,5 +1,10 @@
 name: Col Relay Isolated Deployment
 on:
+  pull_request:
+    paths:
+      - 'lab/col-animal-alphabet-v0/cloudflare-bridge/**'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs'
+      - '.github/workflows/col-relay-isolated-deploy.yml'
   workflow_dispatch:
     inputs:
       mode:
@@ -29,16 +34,20 @@ jobs:
           grep -qx 'name = "col-animal-relay-isolated"' lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml
           node --check lab/col-animal-alphabet-v0/cloudflare-bridge/worker.mjs
           node --test lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs
-      - name: Check credential is in repository secret vault without disclosing it
+      - name: Bundle with actual Cloudflare Wrangler (no deployment)
+        run: npx --yes wrangler@4.45.0 deploy --dry-run --outdir /tmp/col-relay-bundle
+        working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
+      - name: Check credential presence (manual runs only; no secret disclosure)
+        if: github.event_name == 'workflow_dispatch'
         env:
           COL_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
         shell: bash
         run: |
           if [ -z "$COL_TOKEN" ]; then
-            echo "::error::COL_RELAY_CLOUDFLARE_API_TOKEN is not available in this workflow"
+            echo "::error::COL_RELAY_CLOUDFLARE_API_TOKEN unavailable"
             exit 1
           fi
-          echo "Deployment credential present (value not printed)"
+          echo 'Deployment credential available (value hidden)'
       - name: Deployment gate
         run: |
           echo "Validation only. No deployment until security, cost, and runtime blockers are resolved."
