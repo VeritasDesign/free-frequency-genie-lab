@@ -30,3 +30,6 @@ Existing Dispatch Bus `free-frequency-factory` issue #70 accepts **READ_ONLY** w
 
 ## Proof required before promotion
 VERIFIED / BLOCKED / UNKNOWN per criterion; exact changed files, branch SHA, test commands, Actions run URLs, security blockers, costs and rollback. Record manual friction in `FACTORY_RECURSIVE_LEARNING_001.md`. Human owner approves any deployment or installation.
+
+## Updated deployment authorization
+Owner subsequently authorized Chief or a QA worker to deploy and explicitly requested automation. **Allowed after gates pass:** deploy an isolated new Col relay candidate with verified no-additional-charge capacity, run live smoke tests, and record rollback/evidence. **Still prohibited:** surprise charges, touching other production Workers, modifying existing Fire/Roku installs without acceptance, changing account-wide secrets/billing, or claiming real device success without the owner testing the Element Roku. Production promotion requires a verified rollback and QA gate. Factory dispatch v0.1 remains READ_ONLY; a reviewed v0.2 coding/QA executor must be proven separately. See Factory draft PR #128.
