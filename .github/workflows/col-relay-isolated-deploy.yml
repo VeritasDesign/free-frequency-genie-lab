@@ -66,6 +66,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ef9174a44a8fcf9f0f42318a4ff3a987
         working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
         shell: bash
         run: |
@@ -76,6 +77,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ef9174a44a8fcf9f0f42318a4ff3a987
           OWNER_SECRET: ${{ secrets.COL_RELAY_OWNER_PROVISION_SECRET }}
         working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
         shell: bash
