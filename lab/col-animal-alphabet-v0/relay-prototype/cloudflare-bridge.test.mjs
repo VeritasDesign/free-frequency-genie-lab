@@ -74,3 +74,11 @@ test('durable command receipts stay bounded after repeated distinct taps',async(
   assert.equal(await storage.get('event:bear-event-0000'),undefined);
   assert.equal((await core.poll(149)).command.commandId,150);
 });
+
+test('pairing completion rejects high-volume guesses even without an active code',async()=>{
+  const storage=new Storage(),instance=new ColReceiver({storage},{});
+  const req=()=>new Request('https://example.workers.dev/api/pair/complete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:'000000'})});
+  for(let i=0;i<12;i++)assert.equal((await instance.fetch(req())).status,404);
+  assert.equal((await instance.fetch(req())).status,429);
+  assert.equal(await storage.get('guessWindowCount'),12);
+});
