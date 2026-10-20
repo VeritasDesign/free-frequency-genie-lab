@@ -42,3 +42,17 @@ test('pairing code expires and is not reusable',async()=>{
   assert.equal((await receiver.confirmPairing(receiverToken)).status,410);
   assert.equal((await receiver.completePairing(code)).status,404);
 });
+
+test('five incorrect pairing codes exhaust current pairing window',async()=>{
+  const receiver=new DurableReceiverSession(new Store());
+  const {receiverToken}=await receiver.register({ownerAuthorized:true});
+  const {code}=await receiver.startPairing(receiverToken);
+  await receiver.confirmPairing(receiverToken);
+  for(let i=0;i<5;i++)assert.equal((await receiver.completePairing('bad')).status,400);
+  const wrong=code==='000000'?'000001':'000000';
+  for(let i=0;i<5;i++)assert.equal((await receiver.completePairing(wrong)).status,404);
+  assert.equal((await receiver.completePairing(code)).status,429);
+  const fresh=await receiver.startPairing(receiverToken);
+  await receiver.confirmPairing(receiverToken);
+  assert.equal((await receiver.completePairing(fresh.code)).status,200);
+});
