@@ -1,0 +1,44 @@
+name: Col Relay Isolated Deployment
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Validation only; deploy remains blocked pending security/runtime/cost signoff"
+        required: true
+        type: choice
+        options:
+          - validate
+permissions:
+  contents: read
+concurrency:
+  group: col-animal-relay-isolated
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify fixed target and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qx 'name = "col-animal-relay-isolated"' lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml
+          node --check lab/col-animal-alphabet-v0/cloudflare-bridge/worker.mjs
+          node --test lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs
+      - name: Check credential is in repository secret vault without disclosing it
+        env:
+          COL_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$COL_TOKEN" ]; then
+            echo "::error::COL_RELAY_CLOUDFLARE_API_TOKEN is not available in this workflow"
+            exit 1
+          fi
+          echo "Deployment credential present (value not printed)"
+      - name: Deployment gate
+        run: |
+          echo "Validation only. No deployment until security, cost, and runtime blockers are resolved."
