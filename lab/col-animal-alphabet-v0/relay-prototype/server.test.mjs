@@ -24,7 +24,7 @@ test('pair, select, repeat, reject unauthorized, revoke',async()=>{
     assert.equal((await call('/api/pair/complete','POST',{code})).status,404);
     const sender=paired.data.senderToken;
     const first=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-first-001'},sender);
-    const second=await call('/api/animal/select','POST',{receiverId,letter:'B'},sender);
+    const second=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-second-002'},sender);
     assert.equal(first.data.commandId,1);assert.equal(second.data.commandId,2);
     const retry=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-second-002'},sender);
     assert.equal(retry.data.commandId,2);assert.equal(retry.data.deduplicated,true);
