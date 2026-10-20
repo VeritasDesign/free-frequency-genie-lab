@@ -1,5 +1,6 @@
 // Source-only durable state core. NOT a deployed Worker or complete pairing service.
 // Storage is a Cloudflare Durable Object storage-compatible interface.
+const MAX_RECEIPTS = 128; // Bounded replay protection; older IDs may be accepted again after eviction.
 const validLetter = letter => typeof letter === 'string' && /^[A-Z]$/.test(letter);
 const validEvent = event => typeof event === 'string' && /^[a-zA-Z0-9_-]{8,100}$/.test(event);
 export class DurableCommandCore {
@@ -23,6 +24,14 @@ export class DurableCommandCore {
       await tx.put('commandId',next);
       await tx.put('latestCommand',command);
       await tx.put(receiptKey,{...command,createdAt:this.now()});
+      // Cap durable receipt growth even if a tablet sends thousands of unique taps.
+      const receiptQueue = (await tx.get('receiptQueue')) || [];
+      receiptQueue.push(clientEventId);
+      if (receiptQueue.length > MAX_RECEIPTS) {
+        const evicted = receiptQueue.shift();
+        await tx.delete('event:' + evicted);
+      }
+      await tx.put('receiptQueue',receiptQueue);
       return {status:200,...command,deduplicated:false};
     });
   }
