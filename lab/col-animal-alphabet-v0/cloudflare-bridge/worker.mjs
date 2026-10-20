@@ -18,7 +18,7 @@ export class ColReceiver {
     if(method==='POST'){
       if(Number(req.headers.get('content-length')||0)>2048)return json(413,{error:'body_too_large'});
       const raw=await req.text();
-      if(raw.length>2048)return json(413,{error:'body_too_large'});
+      if(new TextEncoder().encode(raw).byteLength>2048)return json(413,{error:'body_too_large'});
       try{body=JSON.parse(raw||'{}');if(!body||typeof body!=='object'||Array.isArray(body))throw Error();}catch{return json(400,{error:'invalid_body'});}
     }
     if(path==='/api/provision'){
