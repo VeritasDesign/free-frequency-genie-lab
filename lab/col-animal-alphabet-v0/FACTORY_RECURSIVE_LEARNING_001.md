@@ -28,3 +28,17 @@ Proposed state machine: `DISCOVERED → DOCUMENTED → IMPLEMENTED → TESTED �
 
 ## Next Factory improvement
 Implement a **receipt-only, read-only** action that collects the current issue, branch HEAD, PR, Actions results and unresolved gates, then generates both receipts without changing source or deploying. Independently test it on issue #171 before generalizing to other projects.
+
+## Conveyor reuse checkpoint — 2026-10-19
+Chief inspected **actual current source** in `VeritasDesign/free-frequency-factory`:
+- `bridge/README.md`
+- `.github/workflows/free-frequency-dispatch-v0.1.yml`
+- `bridge/proof-worker.js`
+
+**Verified contract:** Dedicated Dispatch Bus issue #70, exact `FF_DISPATCH_V0_1` marker, `FreeFrequencyWorkRequest/v0.1`, `READ_ONLY` only, allowlisted proof worker or HQ reader, receipt `FF_RECEIPT_V0_1`, dedupe by message ID. The proof worker does **not** write implementation code. This is a real transport-to-proof-worker conveyor, **not** a proven general coding-worker dispatcher.
+
+**Action:** Chief posted one bounded read-only request to Factory issue #70 as comment [6280271547](https://github.com/VeritasDesign/free-frequency-factory/issues/70#issuecomment-6280271547), message `col-roku-bridge-conveyor-proof-20261019-001`, correlation `col-bridge-issue171-pr174`. Receipt must be checked before marking the dispatch PASS.
+
+**Recursive improvement:** Add a safe, explicit `PROPOSE_ONLY` or human-gated implementation worker target through a separately reviewed contract and tests; never escalate v0.1's `READ_ONLY` authority or interpret a proof receipt as code generation. Candidate should accept a scoped work order from issue #171, create an isolated PR, run CI, and attach commit-specific receipts; require owner gate for deployment and cost.
+
+**Factory friction:** The bridge files live in `free-frequency-factory`, not `free-frequency-genie-lab`; initial lookup in lab repo returned 404. Future Factory recovery must resolve repository and branch before reading paths. The historical conveyor only proves a narrow read-only worker, so preserve that boundary.
