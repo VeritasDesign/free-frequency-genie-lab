@@ -25,3 +25,13 @@ test('reject invalid letters, cursors and reused event for another letter',async
   assert.equal((await core.select({letter:'A',clientEventId:'tap-valid-001'})).status,409);
   assert.equal((await core.poll(-1)).status,400);
 });
+
+test('revocation persists across simulated restart and blocks select/poll',async()=>{
+  const storage=new FakeStorage();
+  const core=new DurableCommandCore(storage);
+  await core.select({letter:'U',clientEventId:'urchin-tap-001'});
+  assert.deepEqual(await core.revoke(),{status:200,revoked:true});
+  const restarted=new DurableCommandCore(storage);
+  assert.deepEqual(await restarted.select({letter:'B',clientEventId:'bear-tap-003'}),{status:403,error:'receiver_revoked'});
+  assert.deepEqual(await restarted.poll(0),{status:403,error:'receiver_revoked'});
+});
