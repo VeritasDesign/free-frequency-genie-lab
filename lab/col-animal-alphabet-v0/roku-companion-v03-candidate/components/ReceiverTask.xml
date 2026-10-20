@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ReceiverTask" extends="Task">
+  <interface>
+    <field id="enabled" type="boolean" value="false"/>
+    <field id="endpoint" type="string" value=""/>
+    <field id="receiverId" type="string" value=""/>
+    <field id="receiverToken" type="string" value=""/>
+    <field id="command" type="assocarray" alwaysNotify="true"/>
+    <field id="connectionState" type="string" value="Not paired" alwaysNotify="true"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ReceiverTask.brs"/>
+</component>

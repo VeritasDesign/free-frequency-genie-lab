@@ -23,9 +23,13 @@ test('pair, select, repeat, reject unauthorized, revoke',async()=>{
     assert.equal(paired.status,200);
     assert.equal((await call('/api/pair/complete','POST',{code})).status,404);
     const sender=paired.data.senderToken;
-    const first=await call('/api/animal/select','POST',{receiverId,letter:'B'},sender);
-    const second=await call('/api/animal/select','POST',{receiverId,letter:'B'},sender);
+    const first=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-first-001'},sender);
+    const second=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-second-002'},sender);
     assert.equal(first.data.commandId,1);assert.equal(second.data.commandId,2);
+    const retry=await call('/api/animal/select','POST',{receiverId,letter:'B',clientEventId:'tap-second-002'},sender);
+    assert.equal(retry.data.commandId,2);assert.equal(retry.data.deduplicated,true);
+    assert.equal((await call('/api/animal/select','POST',{receiverId,letter:'A',clientEventId:'tap-second-002'},sender)).status,409);
+    assert.equal((await call('/api/animal/select','POST',{receiverId,letter:'A'},sender)).status,400);
     assert.equal((await call('/api/receiver/next?receiverId='+receiverId+'&after=0','GET',null,'bad')).status,401);
     const next=await call('/api/receiver/next?receiverId='+receiverId+'&after=1','GET',null,receiverToken);
     assert.deepEqual(next.data.command,{commandId:2,letter:'B'});

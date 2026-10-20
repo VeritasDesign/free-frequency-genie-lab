@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeScene" extends="Scene">
+  <script type="text/brightscript" uri="pkg:/components/HomeScene.brs"/>
+  <children>
+    <Rectangle width="1920" height="1080" color="0x163e38FF"/>
+    <Label text="Col's Animal Alphabet" width="1700" height="100" translation="[110,70]" color="0xFFFFFFFF" font="font:LargeBoldSystemFont"/>
+    <Label id="status" text="Waiting for parent pairing. OK: sample test." width="1700" height="90" translation="[110,185]" color="0xFFFFFFFF" font="font:MediumSystemFont"/>
+    <Video id="video" width="1540" height="660" translation="[190,320]"/>
+    <ReceiverTask id="receiver" enabled="false"/>
+  </children>
+</component>

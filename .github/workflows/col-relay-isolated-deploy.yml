@@ -1,0 +1,89 @@
+name: Col Relay Isolated Deployment
+on:
+  pull_request:
+    paths:
+      - 'lab/col-animal-alphabet-v0/cloudflare-bridge/**'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/durable-core.mjs'
+      - '.github/workflows/col-relay-isolated-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Validate or explicitly deploy isolated Col relay (owner approved; no paid upgrade)"
+        required: true
+        type: choice
+        options:
+          - validate
+          - deploy
+permissions:
+  contents: read
+concurrency:
+  group: col-animal-relay-isolated
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify fixed target and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qx 'name = "col-animal-relay-isolated"' lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml
+          node --check lab/col-animal-alphabet-v0/cloudflare-bridge/worker.mjs
+          node --test lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs
+      - name: Bundle with actual Cloudflare Wrangler (no deployment)
+        run: npx --yes wrangler@4.45.0 deploy --dry-run --outdir /tmp/col-relay-bundle
+        working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
+      - name: Check credential presence (manual runs only; no secret disclosure)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          COL_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$COL_TOKEN" ]; then
+            echo "::error::COL_RELAY_CLOUDFLARE_API_TOKEN unavailable"
+            exit 1
+          fi
+          echo 'Deployment credential available (value hidden)'
+      - name: Verify isolated deploy prerequisites
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy'
+        env:
+          CF_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+          OWNER_SECRET: ${{ secrets.COL_RELAY_OWNER_PROVISION_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_TOKEN" || { echo "::error::Cloudflare token missing"; exit 1; }
+          test -n "$OWNER_SECRET" || { echo "::error::Owner provisioning secret missing; deploy blocked"; exit 1; }
+          test "${#OWNER_SECRET}" -ge 32 || { echo "::error::Owner provisioning secret must be at least 32 characters"; exit 1; }
+          echo 'Required isolated deployment credentials present (values hidden)'
+      - name: Deploy isolated relay
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ef9174a44a8fcf9f0f42318a4ff3a987
+        working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qx 'name = "col-animal-relay-isolated"' wrangler.toml
+          npx --yes wrangler@4.45.0 deploy
+      - name: Install owner provisioning secret (never log)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.COL_RELAY_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ef9174a44a8fcf9f0f42318a4ff3a987
+          OWNER_SECRET: ${{ secrets.COL_RELAY_OWNER_PROVISION_SECRET }}
+        working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$OWNER_SECRET" | npx --yes wrangler@4.45.0 secret put OWNER_PROVISION_SECRET
+      - name: Deployment status
+        run: |
+          echo 'Validation completed. Deploy runs require both dedicated secrets and explicit deploy selection.'

@@ -55,7 +55,7 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
       const id=token(),receiverToken=token();
       let code;
       do{code=String(randomInt(0,1000000)).padStart(6,'0');}while([...sessions.values()].some(s=>s.code===code));
-      sessions.set(id,{code,receiverHash:hash(receiverToken),senderHash:null,expiresAt:now()+pairingTtlMs,commandId:0,command:null,paired:false,revoked:false});
+      sessions.set(id,{code,receiverHash:hash(receiverToken),senderHash:null,expiresAt:now()+pairingTtlMs,commandId:0,command:null,events:new Map(),paired:false,revoked:false});
       return send(res,201,{receiverId:id,receiverToken,code,expiresInSeconds:Math.ceil(pairingTtlMs/1000)});
     }
     if(req.method==='POST' && url.pathname==='/api/pair/complete'){
@@ -72,8 +72,18 @@ export function createRelay({now=()=>Date.now(), origin='http://localhost:8788',
     if(req.method==='POST' && url.pathname==='/api/animal/select'){
       if(!s.paired||!auth(s,'senderHash'))return send(res,401,{error:'unauthorized'});
       if(typeof body.letter!=='string'||!/^[A-Z]$/.test(body.letter))return send(res,400,{error:'invalid_animal'});
+      // A network retry of the same tap must not generate a second playback event.
+      // A fresh event ID, including the same animal, must generate a new command.
+      if(typeof body.clientEventId!=='string'||!/^[a-zA-Z0-9_-]{8,100}$/.test(body.clientEventId))return send(res,400,{error:'invalid_event_id'});
+      const previous=s.events.get(body.clientEventId);
+      if(previous){
+        if(previous.letter!==body.letter)return send(res,409,{error:'event_id_conflict'});
+        return send(res,200,{commandId:previous.commandId,letter:previous.letter,deduplicated:true});
+      }
       s.commandId++;
       s.command={commandId:s.commandId,letter:body.letter};
+      s.events.set(body.clientEventId,s.command);
+      if(s.events.size>256)s.events.delete(s.events.keys().next().value);
       return send(res,200,{commandId:s.commandId,letter:body.letter});
     }
     if(req.method==='GET' && url.pathname==='/api/receiver/next'){
