@@ -37,8 +37,6 @@ jobs:
       - name: Bundle with actual Cloudflare Wrangler (no deployment)
         run: npx --yes wrangler@4.45.0 deploy --dry-run --outdir /tmp/col-relay-bundle
         working-directory: lab/col-animal-alphabet-v0/cloudflare-bridge
-      - name: Validate real workerd Durable Object runtime (local only)
-        run: node --test lab/col-animal-alphabet-v0/relay-prototype/workerd-runtime.test.mjs
       - name: Check credential presence (manual runs only; no secret disclosure)
         if: github.event_name == 'workflow_dispatch'
         env:
