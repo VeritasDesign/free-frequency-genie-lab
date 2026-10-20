@@ -4,6 +4,7 @@ on:
     paths:
       - 'lab/col-animal-alphabet-v0/cloudflare-bridge/**'
       - 'lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/durable-core.mjs'
       - '.github/workflows/col-relay-isolated-deploy.yml'
   workflow_dispatch:
     inputs:
