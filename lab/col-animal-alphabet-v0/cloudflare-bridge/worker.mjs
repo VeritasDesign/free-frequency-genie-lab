@@ -94,11 +94,35 @@ export default {
   async fetch(req,env){
     const url=new URL(req.url);
     if(url.protocol!=='https:')return json(400,{error:'https_required'});
+    // Browser clients are permitted only from the exact configured Fire PWA origin.
+    // Roku requests have no Origin and use receiver credentials.
+    const origin=req.headers.get('origin');
+    if(origin){
+      if(!env.TABLET_ALLOWED_ORIGIN||origin!==env.TABLET_ALLOWED_ORIGIN)return json(403,{error:'origin_not_allowed'});
+      if(req.method==='OPTIONS'){
+        const requested=req.headers.get('access-control-request-headers')||'';
+        if(!/^[a-zA-Z0-9, -]*$/.test(requested))return json(400,{error:'invalid_preflight'});
+        return new Response(null,{status:204,headers:{
+          'access-control-allow-origin':origin,
+          'access-control-allow-methods':'POST, GET, OPTIONS',
+          'access-control-allow-headers':'authorization, content-type',
+          'access-control-max-age':'300','vary':'Origin'
+        }});
+      }
+      const response=await routeReceiver(req,env,url);
+      const headers=new Headers(response.headers);
+      headers.set('access-control-allow-origin',origin);
+      headers.set('vary','Origin');
+      return new Response(response.body,{status:response.status,headers});
+    }
     if(req.method==='OPTIONS')return json(405,{error:'method_not_allowed'});
+    return routeReceiver(req,env,url);
+  }
+};
+async function routeReceiver(req,env,url){
     const id=url.searchParams.get('receiverId');
     if(!id||!/^[a-zA-Z0-9_-]{12,64}$/.test(id))return json(400,{error:'receiver_id_required'});
     // The receiver ID is opaque routing, not an authentication credential.
     const object=env.COL_RECEIVERS.get(env.COL_RECEIVERS.idFromName(id));
     return object.fetch(req);
-  }
-};
+}
