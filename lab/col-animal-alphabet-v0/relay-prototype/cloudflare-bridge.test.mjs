@@ -82,3 +82,10 @@ test('pairing completion rejects high-volume guesses even without an active code
   assert.equal((await instance.fetch(req())).status,429);
   assert.equal(await storage.get('guessWindowCount'),12);
 });
+
+test('POST body limit counts UTF-8 bytes, not just characters',async()=>{
+  const instance=new ColReceiver({storage:new Storage()},{});
+  const oversized='é'.repeat(1100);
+  const req=new Request('https://example.workers.dev/api/pair/complete',{method:'POST',body:oversized});
+  assert.equal((await instance.fetch(req)).status,413);
+});
