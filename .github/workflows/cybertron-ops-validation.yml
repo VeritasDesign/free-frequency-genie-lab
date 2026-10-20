@@ -1,0 +1,45 @@
+name: Cybertron Operations Gate - Validation
+on:
+  pull_request:
+    paths:
+      - 'docs/cybertron-operations-gate-v0.md'
+      - '.github/workflows/cybertron-ops-validation.yml'
+      - 'lab/col-animal-alphabet-v0/cloudflare-bridge/**'
+      - 'lab/col-animal-alphabet-v0/relay-prototype/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify gate policy and fixed relay target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/cybertron-operations-gate-v0.md
+          if [ -f lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml ]; then
+            grep -qx 'name = "col-animal-relay-isolated"' lab/col-animal-alphabet-v0/cloudflare-bridge/wrangler.toml
+            node --check lab/col-animal-alphabet-v0/cloudflare-bridge/worker.mjs
+          else
+            echo 'Relay source absent on this branch; relay-specific checks deferred to PR #174.'
+          fi
+      - name: Test relay behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs ]; then
+            node --test lab/col-animal-alphabet-v0/relay-prototype/cloudflare-bridge.test.mjs
+          else
+            echo 'Relay tests absent on this branch; no claim of relay test pass.'
+          fi
+      - name: Validation receipt
+        shell: bash
+        run: |
+          echo "Validated commit: $GITHUB_SHA"
+          echo "Validation only. No credentials, deployment, provisioning, or production changes."
