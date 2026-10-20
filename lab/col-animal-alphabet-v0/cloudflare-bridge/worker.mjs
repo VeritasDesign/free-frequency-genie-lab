@@ -59,6 +59,17 @@ export class ColReceiver {
       return json(200,{confirmed:true});
     }
     if(path==='/api/pair/complete'){
+      // Global per-receiver throttle applies even to malformed or expired guesses.
+      const now=Date.now();
+      const gate=await this.storage.transaction(async tx=>{
+        const until=await tx.get('guessWindowUntil')||0;
+        const count=now<until?(await tx.get('guessWindowCount')||0):0;
+        if(count>=12)return false;
+        await tx.put('guessWindowUntil',now<until?until:now+600000);
+        await tx.put('guessWindowCount',count+1);
+        return true;
+      });
+      if(!gate)return json(429,{error:'pairing_rate_limited'});
       if(typeof body.code!=='string'||!/^[0-9]{6}$/.test(body.code))return json(400,{error:'invalid_code'});
       return this.storage.transaction(async tx=>{
         const now=Date.now(),expiry=await tx.get('pairingExpiry')||0,stored=await tx.get('pairingHash');
