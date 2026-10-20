@@ -97,3 +97,10 @@ test('invalid UTF-8 body is rejected without a server exception',async()=>{
   assert.equal(response.status,400);
   assert.equal((await response.json()).error,'invalid_body');
 });
+
+test('CORS preflight rejects non-allowlisted custom headers',async()=>{
+  const env={TABLET_ALLOWED_ORIGIN:'https://col-animal-alphabet-preview.vercel.app'};
+  const response=await worker.fetch(new Request('https://example.workers.dev/api/pair/start?receiverId=sampleReceiver123',{method:'OPTIONS',headers:{origin:env.TABLET_ALLOWED_ORIGIN,'access-control-request-headers':'authorization, x-owner-secret'}}),env);
+  assert.equal(response.status,403);
+  assert.equal(response.headers.get('access-control-allow-origin'),null);
+});
