@@ -17,8 +17,22 @@ export class ColReceiver {
     let body={};
     if(method==='POST'){
       if(Number(req.headers.get('content-length')||0)>2048)return json(413,{error:'body_too_large'});
-      const raw=await req.text();
-      if(new TextEncoder().encode(raw).byteLength>2048)return json(413,{error:'body_too_large'});
+      // Stream with a hard cap: do not buffer arbitrarily large attacker-controlled bodies.
+      const reader=req.body?.getReader();
+      const chunks=[];let bytes=0;
+      if(reader){
+        try{
+          while(true){
+            const {done,value}=await reader.read();if(done)break;
+            bytes+=value.byteLength;
+            if(bytes>2048){await reader.cancel();return json(413,{error:'body_too_large'});}
+            chunks.push(value);
+          }
+        }finally{reader.releaseLock();}
+      }
+      const data=new Uint8Array(bytes);let offset=0;
+      for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.byteLength;}
+      const raw=new TextDecoder('utf-8',{fatal:true}).decode(data);
       try{body=JSON.parse(raw||'{}');if(!body||typeof body!=='object'||Array.isArray(body))throw Error();}catch{return json(400,{error:'invalid_body'});}
     }
     if(path==='/api/provision'){
