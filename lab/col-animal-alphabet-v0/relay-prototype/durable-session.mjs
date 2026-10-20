@@ -33,6 +33,7 @@ export class DurableReceiverSession {
       await tx.put('pairingHash',digest(code));
       await tx.put('pairingExpiry',this.now()+this.pairingTtlMs);
       await tx.put('pairingConfirmed',false);
+      await tx.put('pairingAttempts',0);
       return {status:200,code,expiresInSeconds:Math.ceil(this.pairingTtlMs/1000)};
     });
   }
@@ -50,13 +51,20 @@ export class DurableReceiverSession {
       if(await tx.get('revoked'))return {status:403,error:'receiver_revoked'};
       if(typeof code!=='string'||!/^\d{6}$/.test(code))return {status:400,error:'invalid_code'};
       const hashed=await tx.get('pairingHash');
-      if(!hashed||this.now()>=await tx.get('pairingExpiry')||!equal(hashed,digest(code)))return {status:404,error:'invalid_or_expired_code'};
+      if(!hashed||this.now()>=await tx.get('pairingExpiry'))return {status:404,error:'invalid_or_expired_code'};
+      const attempts=await tx.get('pairingAttempts')||0;
+      if(attempts>=5)return {status:429,error:'pairing_attempts_exhausted'};
+      if(!equal(hashed,digest(code))){
+        await tx.put('pairingAttempts',attempts+1);
+        return {status:404,error:'invalid_or_expired_code'};
+      }
       if(!await tx.get('pairingConfirmed'))return {status:409,error:'tv_confirmation_required'};
       const senderToken=token();
       await tx.put('senderHash',digest(senderToken));
       await tx.delete('pairingHash');
       await tx.delete('pairingExpiry');
       await tx.delete('pairingConfirmed');
+      await tx.delete('pairingAttempts');
       return {status:200,senderToken};
     });
   }
